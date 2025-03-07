@@ -1,0 +1,22 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "DeWarmte Connection",
+                "description": "Set up your DeWarmte connection. You need your mydewarmte.com credentials.",
+                "data": {
+                    "username": "Username",
+                    "password": "Password",
+                    "update_interval": "Update interval (seconds)"
+                }
+            }
+        },
+        "error": {
+            "invalid_auth": "Invalid username or password",
+            "unknown": "Unexpected error occurred"
+        },
+        "abort": {
+            "already_configured": "This DeWarmte account is already configured"
+        }
+    }
+} 
