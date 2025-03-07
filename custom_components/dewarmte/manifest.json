@@ -1,0 +1,11 @@
+{
+  "domain": "dewarmte",
+  "name": "DeWarmte",
+  "documentation": "https://github.com/ronald/dewarmte-homeassistant",
+  "dependencies": ["http"],
+  "codeowners": [],
+  "requirements": ["aiohttp", "beautifulsoup4"],
+  "version": "0.1.0",
+  "config_flow": true,
+  "iot_standards": ["cloud_polling"]
+} 
