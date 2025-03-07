@@ -10,9 +10,8 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .api import DeWarmteApiClient
 from .const import (
-    CONF_EMAIL,
+    CONF_USERNAME,
     CONF_PASSWORD,
-    CONF_URL,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
@@ -35,7 +34,7 @@ class DeWarmteConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 # Validate the credentials
                 async with DeWarmteApiClient(
-                    user_input[CONF_EMAIL],
+                    user_input[CONF_USERNAME],
                     user_input[CONF_PASSWORD],
                 ) as client:
                     if not await client.async_login():
@@ -44,7 +43,7 @@ class DeWarmteConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         return self.async_create_entry(
                             title="DeWarmte",
                             data={
-                                CONF_EMAIL: user_input[CONF_EMAIL],
+                                CONF_USERNAME: user_input[CONF_USERNAME],
                                 CONF_PASSWORD: user_input[CONF_PASSWORD],
                                 CONF_UPDATE_INTERVAL: user_input.get(
                                     CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
@@ -59,7 +58,7 @@ class DeWarmteConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=config_entries.Schema(
                 {
-                    CONF_EMAIL: str,
+                    CONF_USERNAME: str,
                     CONF_PASSWORD: str,
                     CONF_UPDATE_INTERVAL: int,
                 }
