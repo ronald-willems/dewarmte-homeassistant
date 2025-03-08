@@ -7,14 +7,18 @@ from typing import Any, Tuple
 
 import aiohttp
 
+# Add parent directory to path so we can import the custom component
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from custom_components.dewarmte.api import DeWarmteApiClient
 
 async def get_config() -> dict[str, Any]:
     """Get configuration from config file."""
-    config_file = "test_config.json"
+    config_file = os.path.join(os.path.dirname(__file__), "test_config.json")
+    template_file = os.path.join(os.path.dirname(__file__), "test_config.template.json")
+    
     if not os.path.exists(config_file):
         print(f"Config file {config_file} not found")
-        print("Please create it from test_config.template.json")
+        print(f"Please create it from {template_file}")
         sys.exit(1)
     
     try:

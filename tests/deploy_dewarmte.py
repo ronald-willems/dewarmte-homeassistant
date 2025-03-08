@@ -10,10 +10,12 @@ import subprocess
 
 async def get_config() -> dict[str, Any]:
     """Get configuration from config file."""
-    config_file = "test_config.json"
+    config_file = os.path.join(os.path.dirname(__file__), "test_config.json")
+    template_file = os.path.join(os.path.dirname(__file__), "test_config.template.json")
+    
     if not os.path.exists(config_file):
         print(f"Config file {config_file} not found")
-        print("Please create it from test_config.template.json")
+        print(f"Please create it from {template_file}")
         sys.exit(1)
     
     try:
@@ -76,12 +78,14 @@ async def deploy_to_homeassistant() -> None:
         print("Successfully mounted Home Assistant share")
     
     try:
+        # Get the source path relative to the script location
+        src_path = Path(os.path.dirname(os.path.dirname(__file__))) / "custom_components" / "dewarmte"
+        
         # Copy the custom component
         custom_components_path = Path(mount_point) / "custom_components"
         if not custom_components_path.exists():
             custom_components_path.mkdir(parents=True)
         
-        src_path = Path("custom_components/dewarmte")
         dst_path = custom_components_path / "dewarmte"
         
         print(f"Copying {src_path} to {dst_path}...")

@@ -5,9 +5,11 @@ import logging
 from typing import Any
 
 import voluptuous as vol
+import aiohttp
 
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import DeWarmteApiClient
 from .const import (
@@ -47,23 +49,32 @@ class DeWarmteConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         try:
+            # Get the client session from Home Assistant
+            session = async_get_clientsession(self.hass)
+            
+            # Create the API client with the session
+            client = DeWarmteApiClient(
+                username=user_input[CONF_USERNAME],
+                password=user_input[CONF_PASSWORD],
+                session=session,
+            )
+            
             # Validate the credentials
-            async with DeWarmteApiClient(
-                user_input[CONF_USERNAME],
-                user_input[CONF_PASSWORD],
-            ) as client:
-                if not await client.async_login():
-                    errors["base"] = "invalid_auth"
-                else:
-                    await self.async_set_unique_id(
-                        f"{DOMAIN}_{user_input[CONF_USERNAME]}"
-                    )
-                    self._abort_if_unique_id_configured()
+            if not await client.async_login():
+                errors["base"] = "invalid_auth"
+            else:
+                await self.async_set_unique_id(
+                    f"{DOMAIN}_{user_input[CONF_USERNAME]}"
+                )
+                self._abort_if_unique_id_configured()
 
-                    return self.async_create_entry(
-                        title=f"DeWarmte ({user_input[CONF_USERNAME]})",
-                        data=user_input,
-                    )
+                return self.async_create_entry(
+                    title=f"DeWarmte ({user_input[CONF_USERNAME]})",
+                    data=user_input,
+                )
+                
+        except aiohttp.ClientError:
+            errors["base"] = "cannot_connect"
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected exception: %s", err)
             errors["base"] = "unknown"
