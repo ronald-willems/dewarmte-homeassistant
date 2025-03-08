@@ -2,55 +2,47 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
-import re
 import ssl
-import asyncio
-from contextlib import asynccontextmanager
+import re
+from typing import Any
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 from .const import (
-    SENSOR_SUPPLY_TEMPERATURE,
-    SENSOR_RETURN_TEMPERATURE,
-    SENSOR_ROOM_TEMPERATURE,
-    SENSOR_OUTSIDE_TEMPERATURE,
-    SENSOR_TARGET_TEMPERATURE,
-    SENSOR_HEAT_DEMAND,
-    SENSOR_VALVE_POSITION,
-    SENSOR_STATUS,
+    SENSOR_WATER_FLOW,
+    SENSOR_SUPPLY_TEMP,
+    SENSOR_OUTSIDE_TEMP,
+    SENSOR_HEAT_INPUT,
+    SENSOR_RETURN_TEMP,
+    SENSOR_ELEC_CONSUMP,
+    SENSOR_PUMP_AO_STATE,
+    SENSOR_HEAT_OUTPUT,
+    SENSOR_BOILER_STATE,
+    SENSOR_THERMOSTAT_STATE,
+    SENSOR_TOP_TEMP,
+    SENSOR_BOTTOM_TEMP,
+    SENSOR_HEAT_OUTPUT_PUMP_T,
+    SENSOR_ELEC_CONSUMP_PUMP_T,
+    SENSOR_PUMP_T_STATE,
+    SENSOR_PUMP_T_HEATER_STATE,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-# Mapping of Dutch labels to sensor keys
-LABEL_TO_SENSOR = {
-    "aanvoer temperatuur": SENSOR_SUPPLY_TEMPERATURE,
-    "retour temperatuur": SENSOR_RETURN_TEMPERATURE,
-    "kamer temperatuur": SENSOR_ROOM_TEMPERATURE,
-    "buiten temperatuur": SENSOR_OUTSIDE_TEMPERATURE,
-    "gewenste temperatuur": SENSOR_TARGET_TEMPERATURE,
-    "warmtevraag": SENSOR_HEAT_DEMAND,
-    "klepstand": SENSOR_VALVE_POSITION,
-}
-
 class DeWarmteApiClient:
     """Client for interacting with the DeWarmte API."""
 
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(self, username: str, password: str, session: aiohttp.ClientSession) -> None:
         """Initialize the client."""
         self._username = username
         self._password = password
         self._base_url = "https://mydewarmte.com"
         self._csrf_token: str | None = None
         self._status_url: str | None = None
-        
-        # Create connector with SSL context
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-        self._connector = aiohttp.TCPConnector(ssl=ssl_context)
+        self._device_id: str | None = None
+        self._product_id: str | None = None
+        self._session = session
         
         self._headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -60,48 +52,29 @@ class DeWarmteApiClient:
             "Origin": "https://mydewarmte.com",
             "Referer": "https://mydewarmte.com/"
         }
-        
-        self._session: aiohttp.ClientSession | None = None
-        self._session_lock = asyncio.Lock()
-
-    @asynccontextmanager
-    async def _get_session(self):
-        """Get or create a session."""
-        async with self._session_lock:
-            if self._session is None or self._session.closed:
-                self._session = aiohttp.ClientSession(connector=self._connector)
-            try:
-                yield self._session
-            except Exception as e:
-                _LOGGER.error("Session error: %s", e)
-                if self._session and not self._session.closed:
-                    await self._session.close()
-                self._session = None
-                raise
 
     async def _get_csrf_token(self) -> str | None:
         """Get CSRF token from login page."""
         try:
-            async with self._get_session() as session:
-                async with session.get(
-                    f"{self._base_url}/",
-                    headers=self._headers,
-                    ssl=False
-                ) as response:
-                    if response.status != 200:
-                        _LOGGER.error("Failed to get login page: %s", response.status)
-                        return None
+            async with self._session.get(
+                f"{self._base_url}/",
+                headers=self._headers,
+                ssl=False
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to get login page: %s", response.status)
+                    return None
 
-                    html = await response.text()
-                    _LOGGER.debug("Login page content: %s", html[:500])
-                    
-                    soup = BeautifulSoup(html, "html.parser")
-                    csrf_input = soup.find("input", {"name": "csrfmiddlewaretoken"})
-                    if csrf_input:
-                        token = csrf_input.get("value")
-                        _LOGGER.debug("Found CSRF token: %s", token)
-                        return token
-                    _LOGGER.error("No CSRF token found in login page")
+                html = await response.text()
+                _LOGGER.debug("Login page content: %s", html[:500])
+                
+                soup = BeautifulSoup(html, "html.parser")
+                csrf_input = soup.find("input", {"name": "csrfmiddlewaretoken"})
+                if csrf_input:
+                    token = csrf_input.get("value")
+                    _LOGGER.debug("Found CSRF token: %s", token)
+                    return token
+                _LOGGER.error("No CSRF token found in login page")
         except Exception as err:
             _LOGGER.error("Error getting CSRF token: %s", err)
         return None
@@ -126,32 +99,36 @@ class DeWarmteApiClient:
             
             _LOGGER.debug("Attempting login with data: %s", login_data)
 
-            async with self._get_session() as session:
-                async with session.post(
-                    f"{self._base_url}/",
-                    data=login_data,
-                    headers=self._headers,
-                    allow_redirects=True,
-                    ssl=False
-                ) as response:
-                    _LOGGER.debug("Login response status: %d", response.status)
-                    _LOGGER.debug("Login response URL: %s", str(response.url))
-                    
-                    if response.status != 200:
-                        _LOGGER.error("Login failed with status %d", response.status)
-                        return False
-
-                    # Store status URL for future use
-                    response_url = str(response.url)
-                    if "/status/" in response_url:
-                        self._status_url = response_url
-                        _LOGGER.debug("Found status URL: %s", self._status_url)
-                        return True
-                    
-                    _LOGGER.error("Login succeeded but no status URL found. Response URL: %s", response_url)
-                    html = await response.text()
-                    _LOGGER.debug("Response content: %s", html[:500])
+            async with self._session.post(
+                f"{self._base_url}/",
+                data=login_data,
+                headers=self._headers,
+                allow_redirects=True,
+                ssl=False
+            ) as response:
+                _LOGGER.debug("Login response status: %d", response.status)
+                _LOGGER.debug("Login response URL: %s", str(response.url))
+                
+                if response.status != 200:
+                    _LOGGER.error("Login failed with status %d", response.status)
                     return False
+
+                # Store status URL and extract device/product IDs
+                response_url = str(response.url)
+                if "/status/" in response_url:
+                    self._status_url = response_url
+                    # Extract device and product IDs from URL like /status/859/A-534/
+                    parts = response_url.strip('/').split('/')
+                    if len(parts) >= 4:
+                        self._device_id = parts[-2]
+                        self._product_id = parts[-1]
+                        _LOGGER.debug("Found device_id: %s, product_id: %s", self._device_id, self._product_id)
+                    return True
+                
+                _LOGGER.error("Login succeeded but no status URL found. Response URL: %s", response_url)
+                html = await response.text()
+                _LOGGER.debug("Response content: %s", html[:500])
+                return False
 
         except Exception as err:
             _LOGGER.error("Error during login: %s", err)
@@ -159,80 +136,160 @@ class DeWarmteApiClient:
 
     async def async_get_status_data(self) -> dict[str, Any]:
         """Get data from the status page."""
-        if not self._status_url:
-            _LOGGER.error("No status URL available")
+        if not self._device_id or not self._product_id:
+            _LOGGER.error("No device ID or product ID available")
             return {}
 
         try:
-            async with self._get_session() as session:
-                _LOGGER.debug("Fetching status page: %s", self._status_url)
-                async with session.get(
-                    self._status_url,
-                    headers=self._headers,
-                    ssl=False
-                ) as response:
-                    if response.status != 200:
-                        _LOGGER.error("Failed to get status page: %d", response.status)
-                        return {}
+            # Get the status page
+            async with self._session.get(
+                self._status_url,
+                headers=self._headers,
+                ssl=False
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to get status page: %d", response.status)
+                    return {}
 
-                    html = await response.text()
-                    _LOGGER.debug("Status page content: %s", html[:500])
-                    
-                    soup = BeautifulSoup(html, "html.parser")
-                    data = {}
+                html = await response.text()
+                _LOGGER.debug("Status page HTML received")
 
-                    # Find all divs with values
-                    for label_elem in soup.find_all("label"):
-                        label_text = label_elem.get_text().strip().lower()
-                        _LOGGER.debug("Found label: %s", label_text)
-                        
-                        if label_text in LABEL_TO_SENSOR:
-                            # Find the next div with the value
-                            value_div = label_elem.find_next("div")
-                            if value_div:
-                                value_text = value_div.get_text().strip()
-                                _LOGGER.debug("Found value for %s: %s", label_text, value_text)
-                                
-                                try:
-                                    # Extract numeric value and unit
-                                    match = re.match(r"(-?\d+\.?\d*)\s*([°C%])?", value_text)
-                                    if match:
-                                        value = float(match.group(1))
-                                        unit = match.group(2) or ""
-                                        sensor_id = LABEL_TO_SENSOR[label_text]
-                                        data[sensor_id] = {
-                                            "value": value,
-                                            "unit": unit
-                                        }
-                                        _LOGGER.debug("Parsed value for %s: %s %s", sensor_id, value, unit)
-                                except ValueError as err:
-                                    _LOGGER.error("Error parsing value for %s: %s", label_text, err)
-                                    continue
+                # Parse the HTML
+                soup = BeautifulSoup(html, "html.parser")
+                data = {}
 
-                    # Extract status information
-                    status_div = soup.find("div", class_=lambda x: x and "status" in x)
-                    if status_div:
-                        status_text = status_div.get_text().strip()
-                        # Truncate status text to avoid length issues
-                        status_text = status_text[:250] if status_text else "Unknown"
-                        data[SENSOR_STATUS] = status_text
-                        _LOGGER.debug("Found status: %s", status_text)
-                    else:
-                        _LOGGER.debug("No status div found")
+                # Define variable mappings
+                var_mappings = {
+                    "WaterFlow": (SENSOR_WATER_FLOW, float, "L/min"),
+                    "SupplyTemp": (SENSOR_SUPPLY_TEMP, float, "°C"),
+                    "OutSideTemp": (SENSOR_OUTSIDE_TEMP, float, "°C"),
+                    "HeatInput": (SENSOR_HEAT_INPUT, float, "kW"),
+                    "ReturnTemp": (SENSOR_RETURN_TEMP, float, "°C"),
+                    "ElecConsump": (SENSOR_ELEC_CONSUMP, float, "kW"),
+                    "PompAoOnOff": (SENSOR_PUMP_AO_STATE, int, None),
+                    "HeatOutPut": (SENSOR_HEAT_OUTPUT, float, "kW"),
+                    "BoilerOnOff": (SENSOR_BOILER_STATE, int, None),
+                    "ThermostatOnOff": (SENSOR_THERMOSTAT_STATE, int, None),
+                    "TopTemp": (SENSOR_TOP_TEMP, float, "°C"),
+                    "BottomTemp": (SENSOR_BOTTOM_TEMP, float, "°C"),
+                    "HeatOutputPompT": (SENSOR_HEAT_OUTPUT_PUMP_T, float, "kW"),
+                    "ElecConsumpPompT": (SENSOR_ELEC_CONSUMP_PUMP_T, float, "kW"),
+                    "PompTOnOff": (SENSOR_PUMP_T_STATE, int, None),
+                    "PompTHeaterOnOff": (SENSOR_PUMP_T_HEATER_STATE, int, None)
+                }
 
-                    _LOGGER.debug("Collected data: %s", data)
-                    return data
+                # Find all script tags
+                for script in soup.find_all("script"):
+                    script_text = script.string
+                    if not script_text:
+                        continue
+
+                    # Process each variable mapping
+                    for var_name, (sensor_name, convert_func, unit) in var_mappings.items():
+                        pattern = f'var\\s+{var_name}\\s*=\\s*"([^"]*)"'
+                        match = re.search(pattern, script_text)
+                        if match:
+                            try:
+                                value = convert_func(match.group(1))
+                                data_entry = {"value": value}
+                                if unit:
+                                    data_entry["unit"] = unit
+                                data[sensor_name] = data_entry
+                                _LOGGER.debug(f"Found {sensor_name}: {value} {unit if unit else ''}")
+                            except (ValueError, TypeError) as err:
+                                _LOGGER.error(f"Error parsing {sensor_name}: {err}")
+
+                if not data:
+                    _LOGGER.error("No data found in status page")
+                    return {}
+
+                _LOGGER.info(f"Successfully parsed {len(data)} values from status page")
+                return data
 
         except Exception as err:
             _LOGGER.error("Error getting status data: %s", err)
             return {}
 
-    async def __aenter__(self) -> DeWarmteApiClient:
-        """Create a session when entering context manager."""
-        return self
+    async def async_get_basic_settings(self) -> dict[str, Any]:
+        """Get basic settings from the settings page."""
+        if not self._device_id or not self._product_id:
+            _LOGGER.error("No device ID or product ID available")
+            return {}
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Close the session when exiting context manager."""
-        if self._session and not self._session.closed:
-            await self._session.close()
-            self._session = None 
+        try:
+            settings_url = f"{self._base_url}/basic_settings/{self._device_id}/{self._product_id}/"
+            async with self._session.get(
+                settings_url,
+                headers=self._headers,
+                ssl=False
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to get basic settings page: %d", response.status)
+                    return {}
+
+                html = await response.text()
+                _LOGGER.debug("Basic settings page HTML received")
+
+                # Parse the HTML
+                soup = BeautifulSoup(html, "html.parser")
+                data = {}
+
+                # Find all checkboxes in the form
+                checkboxes = soup.find_all("input", type="checkbox")
+                for checkbox in checkboxes:
+                    name = checkbox.get("name")
+                    if name:
+                        is_checked = checkbox.get("checked") is not None
+                        data[name] = {"value": is_checked}
+                        _LOGGER.debug(f"Found setting {name}: {is_checked}")
+
+                if not data:
+                    _LOGGER.error("No settings found in basic settings page")
+                    return {}
+
+                _LOGGER.info(f"Successfully parsed {len(data)} settings")
+                return data
+
+        except Exception as err:
+            _LOGGER.error("Error getting basic settings: %s", err)
+            return {}
+
+    async def async_update_basic_setting(self, setting_name: str, value: bool) -> bool:
+        """Update a single basic setting while preserving others."""
+        try:
+            # First get current settings
+            current_settings = await self.async_get_basic_settings()
+            if not current_settings:
+                return False
+
+            # Prepare the form data with all current settings
+            form_data = {
+                "csrfmiddlewaretoken": self._csrf_token,
+            }
+            
+            # Add all current settings to the form data
+            for name, setting in current_settings.items():
+                # Update the specific setting we want to change
+                if name == setting_name:
+                    form_data[name] = "on" if value else ""
+                else:
+                    # Keep other settings as they are
+                    form_data[name] = "on" if setting["value"] else ""
+
+            # Submit the form
+            settings_url = f"{self._base_url}/basic_settings/{self._device_id}/{self._product_id}/"
+            async with self._session.post(
+                settings_url,
+                data=form_data,
+                headers=self._headers,
+                allow_redirects=True,
+                ssl=False
+            ) as response:
+                success = response.status == 200
+                if not success:
+                    _LOGGER.error("Failed to update basic setting %s: %d", setting_name, response.status)
+                return success
+
+        except Exception as err:
+            _LOGGER.error("Error updating basic setting %s: %s", setting_name, err)
+            return False 

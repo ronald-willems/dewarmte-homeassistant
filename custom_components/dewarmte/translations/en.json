@@ -2,21 +2,60 @@
     "config": {
         "step": {
             "user": {
-                "title": "DeWarmte Connection",
-                "description": "Set up your DeWarmte connection. You need your mydewarmte.com credentials.",
                 "data": {
-                    "username": "Username",
-                    "password": "Password",
-                    "update_interval": "Update interval (seconds)"
-                }
+                    "username": "Email",
+                    "password": "Password"
+                },
+                "description": "Enter your MyDeWarmte credentials",
+                "title": "MyDeWarmte Login"
             }
         },
         "error": {
-            "invalid_auth": "Invalid username or password",
-            "unknown": "Unexpected error occurred"
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
         },
         "abort": {
-            "already_configured": "This DeWarmte account is already configured"
+            "already_configured": "Device is already configured"
+        }
+    },
+    "entity": {
+        "switch": {
+            "auto_heating": {
+                "name": "Auto Heating",
+                "state": {
+                    "on": "Enabled",
+                    "off": "Disabled"
+                }
+            },
+            "auto_cooling": {
+                "name": "Auto Cooling",
+                "state": {
+                    "on": "Enabled",
+                    "off": "Disabled"
+                }
+            },
+            "auto_tapwater": {
+                "name": "Auto Tap Water",
+                "state": {
+                    "on": "Enabled",
+                    "off": "Disabled"
+                }
+            },
+            "auto_legionella": {
+                "name": "Auto Legionella Protection",
+                "state": {
+                    "on": "Enabled",
+                    "off": "Disabled"
+                }
+            },
+            "auto_night": {
+                "name": "Auto Night Mode",
+                "state": {
+                    "on": "Enabled",
+                    "off": "Disabled"
+                }
+            }
         }
     }
 } 

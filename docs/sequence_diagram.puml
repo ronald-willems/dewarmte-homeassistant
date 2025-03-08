@@ -1,0 +1,69 @@
+@startuml DeWarmte Integration Flow
+
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+box "Home Assistant" #LightBlue
+participant "Home Assistant\nCore" as HA
+participant "DeWarmte\n(__init__.py)" as Init
+participant "DeWarmte API\n(api.py)" as API
+participant "DeWarmte Sensors\n(sensor.py)" as Sensors
+participant "DeWarmte Switches\n(switch.py)" as Switches
+end box
+
+box "External" #LightGreen
+participant "MyDeWarmte\nWebsite" as Website
+end box
+
+== Initialization ==
+HA -> Init: async_setup_entry()
+activate Init
+Init -> API: Create DeWarmteAPI client
+activate API
+Init -> Init: Create update coordinator
+Init -> Sensors: Create sensor entities
+activate Sensors
+Init -> Switches: Create switch entities
+activate Switches
+
+== Data Update Cycle ==
+loop Every 60 seconds
+    Init -> API: async_get_status_data()
+    API -> Website: GET /
+    Website --> API: Login page + CSRF token
+    API -> Website: POST / (login)
+    Website --> API: Redirect to status page
+    API -> Website: GET /status/{device_id}/{product_id}
+    Website --> API: Status page HTML
+    API -> API: Parse sensor values
+    API --> Init: Return sensor data
+    Init -> Sensors: Update sensor states
+    Init -> Switches: Update switch states
+    Sensors --> HA: Report new sensor states
+    Switches --> HA: Report new switch states
+end
+
+== Error Handling ==
+alt Login Failed
+    API -> Website: POST / (login)
+    Website --> API: Error response
+    API --> Init: Login failed
+    Init -> HA: Raise ConfigEntryNotReady
+else No Data
+    API -> Website: GET /status/...
+    Website --> API: Empty/Invalid response
+    API --> Init: Empty data
+    Init -> HA: Raise UpdateFailed
+end
+
+== Cleanup ==
+HA -> Init: async_unload_entry()
+Init -> Sensors: Remove entities
+deactivate Sensors
+Init -> Switches: Remove entities
+deactivate Switches
+Init -> API: Close session
+deactivate API
+deactivate Init
+
+@enduml 

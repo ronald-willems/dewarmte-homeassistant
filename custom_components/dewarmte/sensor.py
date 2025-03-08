@@ -1,17 +1,23 @@
-"""Sensor platform for DeWarmte integration."""
+"""Support for DeWarmte sensors."""
 from __future__ import annotations
 
-import logging
-from datetime import timedelta
+from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature, PERCENTAGE
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfTemperature,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfVolumeFlowRate,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
@@ -20,178 +26,194 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
-from .api import DeWarmteApiClient
+from . import DeWarmteDataUpdateCoordinator
 from .const import (
     DOMAIN,
-    CONF_USERNAME,
-    CONF_PASSWORD,
-    CONF_UPDATE_INTERVAL,
-    SENSOR_NAMES,
-    PERCENTAGE_SENSORS,
-    TEMPERATURE_SENSORS,
-    SENSOR_STATUS,
+    SENSOR_WATER_FLOW,
+    SENSOR_SUPPLY_TEMP,
+    SENSOR_OUTSIDE_TEMP,
+    SENSOR_HEAT_INPUT,
+    SENSOR_RETURN_TEMP,
+    SENSOR_ELEC_CONSUMP,
+    SENSOR_PUMP_AO_STATE,
+    SENSOR_HEAT_OUTPUT,
+    SENSOR_BOILER_STATE,
+    SENSOR_THERMOSTAT_STATE,
+    SENSOR_TOP_TEMP,
+    SENSOR_BOTTOM_TEMP,
+    SENSOR_HEAT_OUTPUT_PUMP_T,
+    SENSOR_ELEC_CONSUMP_PUMP_T,
+    SENSOR_PUMP_T_STATE,
+    SENSOR_PUMP_T_HEATER_STATE,
 )
 
-_LOGGER = logging.getLogger(__name__)
+@dataclass
+class DeWarmteSensorEntityDescription(SensorEntityDescription):
+    """Class describing DeWarmte sensor entities."""
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the DeWarmte sensor platform."""
-    
-    coordinator = DeWarmteDataUpdateCoordinator(
-        hass,
-        entry=entry,
-        name="DeWarmte",
-        update_interval=timedelta(
-            seconds=entry.data.get(CONF_UPDATE_INTERVAL, 300)
+    """Set up the DeWarmte sensors from config entry."""
+    coordinator: DeWarmteDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+
+    # Define all sensor types
+    sensors = [
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_WATER_FLOW,
+            name="Water Flow",
+            native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
+            device_class=SensorDeviceClass.WATER,
+            state_class=SensorStateClass.MEASUREMENT,
         ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_SUPPLY_TEMP,
+            name="Supply Temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            device_class=SensorDeviceClass.TEMPERATURE,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_OUTSIDE_TEMP,
+            name="Outside Temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            device_class=SensorDeviceClass.TEMPERATURE,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_HEAT_INPUT,
+            name="Heat Input",
+            native_unit_of_measurement=UnitOfPower.KILO_WATT,
+            device_class=SensorDeviceClass.POWER,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_RETURN_TEMP,
+            name="Return Temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            device_class=SensorDeviceClass.TEMPERATURE,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_ELEC_CONSUMP,
+            name="Electricity Consumption",
+            native_unit_of_measurement=UnitOfPower.KILO_WATT,
+            device_class=SensorDeviceClass.POWER,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_PUMP_AO_STATE,
+            name="Pump AO State",
+            device_class=SensorDeviceClass.ENUM,
+            options=["Off", "On"],
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_HEAT_OUTPUT,
+            name="Heat Output",
+            native_unit_of_measurement=UnitOfPower.KILO_WATT,
+            device_class=SensorDeviceClass.POWER,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_BOILER_STATE,
+            name="Boiler State",
+            device_class=SensorDeviceClass.ENUM,
+            options=["Off", "On"],
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_THERMOSTAT_STATE,
+            name="Thermostat State",
+            device_class=SensorDeviceClass.ENUM,
+            options=["Off", "On"],
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_TOP_TEMP,
+            name="Top Temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            device_class=SensorDeviceClass.TEMPERATURE,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_BOTTOM_TEMP,
+            name="Bottom Temperature",
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            device_class=SensorDeviceClass.TEMPERATURE,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_HEAT_OUTPUT_PUMP_T,
+            name="Heat Output Pump T",
+            native_unit_of_measurement=UnitOfPower.KILO_WATT,
+            device_class=SensorDeviceClass.POWER,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_ELEC_CONSUMP_PUMP_T,
+            name="Electricity Consumption Pump T",
+            native_unit_of_measurement=UnitOfPower.KILO_WATT,
+            device_class=SensorDeviceClass.POWER,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_PUMP_T_STATE,
+            name="Pump T State",
+            device_class=SensorDeviceClass.ENUM,
+            options=["Off", "On"],
+        ),
+        DeWarmteSensorEntityDescription(
+            key=SENSOR_PUMP_T_HEATER_STATE,
+            name="Pump T Heater State",
+            device_class=SensorDeviceClass.ENUM,
+            options=["Off", "On"],
+        ),
+    ]
+
+    async_add_entities(
+        DeWarmteSensor(coordinator, description)
+        for description in sensors
     )
-    
-    # Fetch initial data
-    await coordinator.async_config_entry_first_refresh()
-    
-    entities = []
 
-    # Create temperature sensors
-    for sensor_id in TEMPERATURE_SENSORS:
-        entities.append(
-            DeWarmteTemperatureSensor(
-                coordinator,
-                sensor_id,
-                SENSOR_NAMES[sensor_id]
-            )
-        )
+class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEntity):
+    """Representation of a DeWarmte sensor."""
 
-    # Create percentage sensors
-    for sensor_id in PERCENTAGE_SENSORS:
-        entities.append(
-            DeWarmtePercentageSensor(
-                coordinator,
-                sensor_id,
-                SENSOR_NAMES[sensor_id]
-            )
-        )
-
-    # Create status sensor
-    entities.append(DeWarmteStatusSensor(coordinator))
-
-    async_add_entities(entities)
-
-class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator):
-    """Class to manage fetching DeWarmte data."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        *,
-        entry: ConfigEntry,
-        name: str,
-        update_interval: timedelta,
-    ) -> None:
-        """Initialize the coordinator."""
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=name,
-            update_interval=update_interval,
-        )
-        self.entry = entry
-        self._api_client = DeWarmteApiClient(
-            entry.data[CONF_USERNAME],
-            entry.data[CONF_PASSWORD],
-        )
-
-    async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data from API endpoint."""
-        try:
-            async with self._api_client as client:
-                if await client.async_login():
-                    data = await client.async_get_status_data()
-                    if not data:
-                        _LOGGER.error("No data received from API")
-                        return {}
-                    return data
-                _LOGGER.error("Failed to login to DeWarmte")
-                return {}
-        except Exception as err:
-            _LOGGER.error("Error updating data: %s", err)
-            return {}
-
-class DeWarmteBaseSensor(CoordinatorEntity, SensorEntity):
-    """Base class for DeWarmte sensors."""
+    entity_description: DeWarmteSensorEntityDescription
 
     def __init__(
         self,
         coordinator: DeWarmteDataUpdateCoordinator,
-        key: str,
-        name: str,
+        description: DeWarmteSensorEntityDescription,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._key = key
-        self._attr_name = f"DeWarmte {name}"
-        self._attr_unique_id = f"{DOMAIN}_{key}"
-        self._attr_has_entity_name = True
-        self._attr_available = False
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.last_update_success and self._attr_available
+        self.entity_description = description
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
+        self._attr_device_info = coordinator.device_info
 
     @property
     def native_value(self) -> StateType:
         """Return the state of the sensor."""
         if not self.coordinator.data:
-            self._attr_available = False
             return None
             
-        if self._key not in self.coordinator.data:
-            self._attr_available = False
+        data = self.coordinator.data.get(self.entity_description.key)
+        if not data:
             return None
             
-        data = self.coordinator.data[self._key]
-        self._attr_available = True
+        value = data.get("value")
         
-        if isinstance(data, dict):
-            return data.get("value")
-        return data
+        # Convert boolean states to On/Off
+        if self.entity_description.device_class == SensorDeviceClass.ENUM:
+            return "On" if value == 1 else "Off"
+            
+        return value
 
-class DeWarmteTemperatureSensor(DeWarmteBaseSensor):
-    """Representation of a DeWarmte temperature sensor."""
-
-    def __init__(
-        self,
-        coordinator: DeWarmteDataUpdateCoordinator,
-        key: str,
-        name: str,
-    ) -> None:
-        """Initialize the temperature sensor."""
-        super().__init__(coordinator, key, name)
-        self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-
-class DeWarmtePercentageSensor(DeWarmteBaseSensor):
-    """Representation of a DeWarmte percentage sensor."""
-
-    def __init__(
-        self,
-        coordinator: DeWarmteDataUpdateCoordinator,
-        key: str,
-        name: str,
-    ) -> None:
-        """Initialize the percentage sensor."""
-        super().__init__(coordinator, key, name)
-        self._attr_native_unit_of_measurement = PERCENTAGE
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-
-class DeWarmteStatusSensor(DeWarmteBaseSensor):
-    """Representation of a DeWarmte status sensor."""
-
-    def __init__(self, coordinator: DeWarmteDataUpdateCoordinator) -> None:
-        """Initialize the status sensor."""
-        super().__init__(coordinator, SENSOR_STATUS, SENSOR_NAMES[SENSOR_STATUS]) 
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            super().available
+            and self.coordinator.data is not None
+            and self.entity_description.key in self.coordinator.data
+        ) 
