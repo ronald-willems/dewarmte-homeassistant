@@ -1,0 +1,44 @@
+@startuml
+' Update Cycle Flow
+' Shows the sequence of events during the periodic update cycle (every 60 seconds)
+' including authentication and data fetching
+
+participant "DataUpdateCoordinator" as Coord
+participant "DeWarmteApiClient" as API
+participant "DeWarmteAuth" as Auth
+participant "SensorEntity" as Sensor
+participant "SwitchEntity" as Switch
+
+[-> Coord: _async_update_data()
+activate Coord
+
+Coord -> API: async_login()
+activate API
+API -> Auth: login()
+Auth -> Auth: _get_csrf_token()
+Auth --> API: success, csrf_token, device_id, product_id
+API --> Coord: success
+deactivate API
+
+Coord -> API: async_get_status_data()
+activate API
+API -> API: Get and parse status page
+API --> Coord: status_data
+deactivate API
+
+Coord -> API: async_get_basic_settings()
+activate API
+API -> API: Get and parse settings page
+API --> Coord: settings_data
+deactivate API
+
+Coord -> Coord: Combine data
+Coord --> Sensor: _handle_coordinator_update()
+Coord --> Switch: _handle_coordinator_update()
+
+Sensor -> Sensor: Update state
+Switch -> Switch: Update state
+
+deactivate Coord
+
+@enduml 

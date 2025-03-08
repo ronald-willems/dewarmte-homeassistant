@@ -1,0 +1,66 @@
+@startuml
+' Switch Control Flow
+' Shows the sequence of events when a switch is turned on/off
+' including API calls and state updates
+
+participant "Home Assistant" as HA
+participant "DeWarmteSwitch" as Switch
+participant "DataUpdateCoordinator" as Coord
+participant "DeWarmteApiClient" as API
+participant "DeWarmteAuth" as Auth
+
+== Turn On Switch ==
+
+HA -> Switch: async_turn_on()
+activate Switch
+
+Switch -> API: async_update_basic_setting(setting_id, True)
+activate API
+
+API -> API: Get settings page
+API -> Auth: Get CSRF token
+API -> API: Submit form with new state
+API -> API: Verify change
+
+API --> Switch: success
+deactivate API
+
+Switch -> Coord: async_request_refresh()
+activate Coord
+
+Coord -> API: async_login()
+Coord -> API: async_get_status_data()
+Coord -> API: async_get_basic_settings()
+Coord -> Switch: _handle_coordinator_update()
+
+deactivate Coord
+deactivate Switch
+
+== Turn Off Switch ==
+
+HA -> Switch: async_turn_off()
+activate Switch
+
+Switch -> API: async_update_basic_setting(setting_id, False)
+activate API
+
+API -> API: Get settings page
+API -> Auth: Get CSRF token
+API -> API: Submit form with new state
+API -> API: Verify change
+
+API --> Switch: success
+deactivate API
+
+Switch -> Coord: async_request_refresh()
+activate Coord
+
+Coord -> API: async_login()
+Coord -> API: async_get_status_data()
+Coord -> API: async_get_basic_settings()
+Coord -> Switch: _handle_coordinator_update()
+
+deactivate Coord
+deactivate Switch
+
+@enduml 

@@ -1,0 +1,61 @@
+@startuml
+' Setup Flow
+' Shows the sequence of events when setting up the DeWarmte integration
+' including creation of sensors and switches
+
+participant "Home Assistant" as HA
+participant "ConfigFlow" as CF
+participant "DeWarmteApiClient" as API
+participant "DeWarmteAuth" as Auth
+participant "DataUpdateCoordinator" as Coord
+participant "SensorPlatform" as Sensor
+participant "SwitchPlatform" as Switch
+
+HA -> CF: async_step_user(user_input)
+activate CF
+
+CF -> API: __init__(username, password, session)
+activate API
+API -> Auth: __init__(username, password, session)
+deactivate API
+
+CF -> API: async_login()
+activate API
+API -> Auth: login()
+Auth -> Auth: _get_csrf_token()
+Auth --> API: success, csrf_token, device_id, product_id
+API --> CF: success
+deactivate API
+
+CF --> HA: async_create_entry()
+deactivate CF
+
+HA -> HA: async_setup_entry()
+activate HA
+
+HA -> Coord: __init__(hass, api)
+activate Coord
+
+HA -> Coord: async_config_entry_first_refresh()
+Coord -> API: async_login()
+Coord -> API: async_get_status_data()
+Coord -> API: async_get_basic_settings()
+Coord --> HA: data
+
+HA -> Sensor: async_setup_entry()
+activate Sensor
+Sensor -> Sensor: Create sensor entities
+Sensor --> HA: async_add_entities()
+deactivate Sensor
+
+HA -> Switch: async_setup_entry()
+activate Switch
+Switch -> API: async_get_basic_settings()
+Switch -> Switch: Create switch entities
+Switch --> HA: async_add_entities()
+deactivate Switch
+
+deactivate Coord
+deactivate HA
+
+@enduml 
