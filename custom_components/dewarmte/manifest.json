@@ -4,7 +4,7 @@
   "codeowners": ["@ronaldw"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/ronaldw/dewarmte-homeassistant",
+  "documentation": "https://github.com/ronald-willems/dewarmte-homeassistant",
   "homekit": {},
   "iot_class": "cloud_polling",
   "requirements": ["beautifulsoup4>=4.9.3"],
