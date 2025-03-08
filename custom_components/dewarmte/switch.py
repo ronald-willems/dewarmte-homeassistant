@@ -16,30 +16,40 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 SWITCH_DESCRIPTIONS = {
-    "auto_heating": {
-        "name": "Auto Heating",
+    "default_heating": {
+        "name": "Default Heating",
         "icon": "mdi:radiator",
-        "translation_key": "auto_heating"
+        "translation_key": "default_heating"
     },
-    "auto_cooling": {
-        "name": "Auto Cooling",
-        "icon": "mdi:snowflake",
-        "translation_key": "auto_cooling"
+    "force_backup_only": {
+        "name": "Force Backup Only",
+        "icon": "mdi:hvac",
+        "translation_key": "force_backup_only"
     },
-    "auto_tapwater": {
-        "name": "Auto Tap Water",
-        "icon": "mdi:water",
-        "translation_key": "auto_tapwater"
+    "force_ao_only": {
+        "name": "Force Heat Pump Only",
+        "icon": "mdi:heat-pump",
+        "translation_key": "force_ao_only"
     },
-    "auto_legionella": {
-        "name": "Auto Legionella Protection",
-        "icon": "mdi:bacteria",
-        "translation_key": "auto_legionella"
+    "backup_eco_mode": {
+        "name": "Backup Eco Mode",
+        "icon": "mdi:leaf",
+        "translation_key": "backup_eco_mode"
     },
-    "auto_night": {
-        "name": "Auto Night Mode",
-        "icon": "mdi:weather-night",
-        "translation_key": "auto_night"
+    "backup_default_mode": {
+        "name": "Backup Default Mode",
+        "icon": "mdi:tune",
+        "translation_key": "backup_default_mode"
+    },
+    "backup_comfort_mode": {
+        "name": "Backup Comfort Mode",
+        "icon": "mdi:sofa",
+        "translation_key": "backup_comfort_mode"
+    },
+    "silent_mode": {
+        "name": "Silent Mode",
+        "icon": "mdi:volume-off",
+        "translation_key": "silent_mode"
     }
 }
 

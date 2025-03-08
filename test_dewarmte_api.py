@@ -9,20 +9,29 @@ import aiohttp
 
 from custom_components.dewarmte.api import DeWarmteApiClient
 
+async def get_config() -> dict[str, Any]:
+    """Get configuration from config file."""
+    config_file = "test_config.json"
+    if not os.path.exists(config_file):
+        print(f"Config file {config_file} not found")
+        print("Please create it from test_config.template.json")
+        sys.exit(1)
+    
+    try:
+        with open(config_file, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error reading config file: {e}")
+        sys.exit(1)
+
 async def get_credentials() -> Tuple[str, str]:
     """Get credentials from config file or command line."""
-    # Check for config file first
-    config_file = "test_config.json"
-    if os.path.exists(config_file):
-        try:
-            with open(config_file, "r") as f:
-                config = json.load(f)
-                username = config.get("username")
-                password = config.get("password")
-                if username and password:
-                    return username, password
-        except Exception as e:
-            print(f"Error reading config file: {e}")
+    config = await get_config()
+    username = config.get("username")
+    password = config.get("password")
+    
+    if username and password:
+        return username, password
     
     # Fall back to command line arguments
     if len(sys.argv) != 3:

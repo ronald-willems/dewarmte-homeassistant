@@ -21,36 +21,50 @@
     },
     "entity": {
         "switch": {
-            "auto_heating": {
-                "name": "Auto Heating",
+            "default_heating": {
+                "name": "Default Heating",
                 "state": {
                     "on": "Enabled",
                     "off": "Disabled"
                 }
             },
-            "auto_cooling": {
-                "name": "Auto Cooling",
+            "force_backup_only": {
+                "name": "Force Backup Only",
                 "state": {
                     "on": "Enabled",
                     "off": "Disabled"
                 }
             },
-            "auto_tapwater": {
-                "name": "Auto Tap Water",
+            "force_ao_only": {
+                "name": "Force Heat Pump Only",
                 "state": {
                     "on": "Enabled",
                     "off": "Disabled"
                 }
             },
-            "auto_legionella": {
-                "name": "Auto Legionella Protection",
+            "backup_eco_mode": {
+                "name": "Backup Eco Mode",
                 "state": {
                     "on": "Enabled",
                     "off": "Disabled"
                 }
             },
-            "auto_night": {
-                "name": "Auto Night Mode",
+            "backup_default_mode": {
+                "name": "Backup Default Mode",
+                "state": {
+                    "on": "Enabled",
+                    "off": "Disabled"
+                }
+            },
+            "backup_comfort_mode": {
+                "name": "Backup Comfort Mode",
+                "state": {
+                    "on": "Enabled",
+                    "off": "Disabled"
+                }
+            },
+            "silent_mode": {
+                "name": "Silent Mode",
                 "state": {
                     "on": "Enabled",
                     "off": "Disabled"

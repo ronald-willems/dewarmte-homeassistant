@@ -19,11 +19,11 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .api import DeWarmteApiClient
-from .const import DOMAIN, UPDATE_INTERVAL
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up DeWarmte from a config entry."""
@@ -38,12 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     # Create coordinator
-    coordinator = DeWarmteDataUpdateCoordinator(
-        hass=hass,
-        api=client,
-        name=DOMAIN,
-        entry_id=entry.entry_id,
-    )
+    coordinator = DeWarmteDataUpdateCoordinator(hass, client)
 
     # Fetch initial data
     await coordinator.async_config_entry_first_refresh()
@@ -64,20 +59,19 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return unload_ok
 
-class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator):
+class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Class to manage fetching data from the API."""
 
     def __init__(self, hass: HomeAssistant, api: DeWarmteApiClient) -> None:
         """Initialize."""
-        self.api = api
-        self.platforms = []
-
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(seconds=60),
         )
+        self.api = api
+        self._device_id = f"{api._device_id}_{api._product_id}" if api._device_id and api._product_id else None
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data via library."""
@@ -90,6 +84,10 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator):
             status_data = await self.api.async_get_status_data()
             settings_data = await self.api.async_get_basic_settings()
 
+            # Update device ID if needed
+            if not self._device_id and self.api._device_id and self.api._product_id:
+                self._device_id = f"{self.api._device_id}_{self.api._product_id}"
+
             # Combine the data
             return {**status_data, **settings_data}
         except Exception as exception:
@@ -98,8 +96,10 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
+        if not self._device_id:
+            return None
         return DeviceInfo(
-            identifiers={(DOMAIN, self._entry_id)},
+            identifiers={(DOMAIN, self._device_id)},
             name="DeWarmte Heat Pump",
             manufacturer="DeWarmte",
             model="Heat Pump",
