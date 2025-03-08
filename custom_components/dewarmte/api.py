@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any
+import asyncio
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -174,12 +175,12 @@ class DeWarmteApiClient:
 
     async def async_update_basic_setting(self, setting_name: str, value: bool) -> bool:
         """Update a basic setting."""
-        if not self._device_id or not self._product_id or not self._csrf_token:
-            _LOGGER.error("Missing required data for updating settings")
+        if not self._device_id or not self._product_id:
+            _LOGGER.error("No device ID or product ID available")
             return False
 
         try:
-            # First get the settings page to get the current CSRF token
+            # Get the settings page to get the current CSRF token
             settings_url = f"{self._auth.base_url}/basic_settings/{self._device_id}/{self._product_id}/"
             async with self._session.get(
                 settings_url,
@@ -198,27 +199,40 @@ class DeWarmteApiClient:
                     return False
 
                 csrf_token = csrf_input.get("value")
-                headers = self._auth.headers.copy()
-                headers["X-CSRFToken"] = csrf_token
 
-                # Prepare the form data
-                form_data = {
-                    "csrfmiddlewaretoken": csrf_token,
-                    setting_name: "on" if value else ""
-                }
+                # Update headers with new CSRF token and referer
+                headers = self._auth.headers.copy()
+                headers.update({
+                    "X-CSRFToken": csrf_token,
+                    "Referer": settings_url,
+                    "Origin": self._auth.base_url,
+                })
+
+                # Get all current form values to maintain state
+                form_data = {"csrfmiddlewaretoken": csrf_token}
+                checkboxes = soup.find_all("input", type="checkbox")
+                for checkbox in checkboxes:
+                    name = checkbox.get("name")
+                    if name:
+                        # Only update the target setting, keep others as is
+                        if name == setting_name:
+                            form_data[name] = "on" if value else ""
+                        else:
+                            form_data[name] = "on" if checkbox.get("checked") is not None else ""
 
                 # Submit the form
                 async with self._session.post(
                     settings_url,
                     data=form_data,
                     headers=headers,
-                    ssl=False
+                    ssl=False,
+                    allow_redirects=True
                 ) as response:
-                    if response.status != 200:
+                    if response.status not in (200, 302):
                         _LOGGER.error("Failed to update setting: %d", response.status)
                         return False
 
-                    _LOGGER.info(f"Successfully updated {setting_name} to {value}")
+                    _LOGGER.info("Successfully updated %s to %s", setting_name, value)
                     return True
 
         except Exception as err:

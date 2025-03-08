@@ -3,47 +3,14 @@ import asyncio
 import json
 import os
 import sys
-from typing import Any, Tuple
+from typing import Any
 
 import aiohttp
 
 # Add parent directory to path so we can import the custom component
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from custom_components.dewarmte.api import DeWarmteApiClient
-
-async def get_config() -> dict[str, Any]:
-    """Get configuration from config file."""
-    config_file = os.path.join(os.path.dirname(__file__), "test_config.json")
-    template_file = os.path.join(os.path.dirname(__file__), "test_config.template.json")
-    
-    if not os.path.exists(config_file):
-        print(f"Config file {config_file} not found")
-        print(f"Please create it from {template_file}")
-        sys.exit(1)
-    
-    try:
-        with open(config_file, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error reading config file: {e}")
-        sys.exit(1)
-
-async def get_credentials() -> Tuple[str, str]:
-    """Get credentials from config file or command line."""
-    config = await get_config()
-    username = config.get("username")
-    password = config.get("password")
-    
-    if username and password:
-        return username, password
-    
-    # Fall back to command line arguments
-    if len(sys.argv) != 3:
-        print("Usage: python test_dewarmte_api.py <username> <password>")
-        print("Or create a test_config.json file with username and password")
-        sys.exit(1)
-    
-    return sys.argv[1], sys.argv[2]
 
 def print_section(title: str, data: dict[str, Any]) -> None:
     """Print a section of data with a title."""
@@ -55,6 +22,33 @@ def print_section(title: str, data: dict[str, Any]) -> None:
             print(f"{key}: {val} {unit}".strip())
         else:
             print(f"{key}: {value}")
+
+async def get_config() -> dict:
+    """Get test configuration."""
+    config_path = os.path.join(os.path.dirname(__file__), "test_config.json")
+    if not os.path.exists(config_path):
+        print(f"Config file not found at {config_path}")
+        return None
+        
+    with open(config_path) as f:
+        return json.load(f)
+
+async def test_status_data(api: DeWarmteApiClient) -> None:
+    """Test getting status data."""
+    print("\nGetting status data...")
+    status_data = await api.async_get_status_data()
+    if not status_data:
+        print("Failed to get status data")
+        return
+
+    # Organize and print status data
+    temperatures = {k: v for k, v in status_data.items() if "temp" in k.lower()}
+    performance = {k: v for k, v in status_data.items() if any(x in k.lower() for x in ["flow", "input", "output", "consump"])}
+    states = {k: v for k, v in status_data.items() if "state" in k.lower()}
+
+    print_section("Temperatures", temperatures)
+    print_section("Performance Metrics", performance)
+    print_section("System States", states)
 
 async def test_basic_settings(api: DeWarmteApiClient) -> None:
     """Test basic settings functionality."""
@@ -100,36 +94,29 @@ async def test_basic_settings(api: DeWarmteApiClient) -> None:
 
 async def main() -> None:
     """Run the test script."""
-    username, password = await get_credentials()
-    
-    async with aiohttp.ClientSession() as session:
-        api = DeWarmteApiClient(username, password, session)
-        
-        # Login
+    config = await get_config()
+    if not config:
+        return
+
+    session = aiohttp.ClientSession()
+    try:
+        api = DeWarmteApiClient(
+            username=config["username"],
+            password=config["password"],
+            session=session
+        )
+
         print("Logging in...")
         if not await api.async_login():
             print("Login failed")
             return
-        print("Login successful")
-        
-        # Get status data
-        print("\nGetting status data...")
-        status_data = await api.async_get_status_data()
-        if not status_data:
-            print("Failed to get status data")
-            return
-        
-        # Organize and print status data
-        temperatures = {k: v for k, v in status_data.items() if "temp" in k.lower()}
-        performance = {k: v for k, v in status_data.items() if any(x in k.lower() for x in ["flow", "input", "output", "consump"])}
-        states = {k: v for k, v in status_data.items() if "state" in k.lower()}
-        
-        print_section("Temperatures", temperatures)
-        print_section("Performance Metrics", performance)
-        print_section("System States", states)
-        
-        # Test basic settings
+        print("Login successful\n")
+
+        await test_status_data(api)
         await test_basic_settings(api)
+
+    finally:
+        await session.close()
 
 if __name__ == "__main__":
     asyncio.run(main()) 
