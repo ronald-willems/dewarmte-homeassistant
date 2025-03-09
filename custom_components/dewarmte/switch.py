@@ -91,11 +91,21 @@ class DeWarmteSwitch(CoordinatorEntity, SwitchEntity):
         super().__init__(coordinator)
         self._setting_id = setting_id
         self._attr_name = description["name"]
-        self._attr_unique_id = f"{DOMAIN}_{setting_id}"
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{setting_id}"
         self._attr_icon = description["icon"]
         self._attr_translation_key = description["translation_key"]
         self._attr_has_entity_name = True
         self._attr_should_poll = False
+        self._attr_device_info = coordinator.device_info
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success
+            and self.coordinator.data is not None
+            and self._setting_id in self.coordinator.data
+        )
 
     @property
     def is_on(self) -> bool | None:
@@ -106,14 +116,30 @@ class DeWarmteSwitch(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        success = await self.coordinator.api.async_update_basic_setting(self._setting_id, True)
-        if success:
-            # Trigger an immediate data update
-            await self.coordinator.async_request_refresh()
+        try:
+            success = await self.coordinator.api.async_update_basic_setting(self._setting_id, True)
+            if success:
+                # Update coordinator data
+                self.coordinator.data[self._setting_id] = {"value": True}
+                self.async_write_ha_state()
+                # Trigger an immediate data update
+                await self.coordinator.async_request_refresh()
+            else:
+                _LOGGER.error("Failed to turn on %s", self._setting_id)
+        except Exception as err:
+            _LOGGER.error("Error turning on %s: %s", self._setting_id, err)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        success = await self.coordinator.api.async_update_basic_setting(self._setting_id, False)
-        if success:
-            # Trigger an immediate data update
-            await self.coordinator.async_request_refresh() 
+        try:
+            success = await self.coordinator.api.async_update_basic_setting(self._setting_id, False)
+            if success:
+                # Update coordinator data
+                self.coordinator.data[self._setting_id] = {"value": False}
+                self.async_write_ha_state()
+                # Trigger an immediate data update
+                await self.coordinator.async_request_refresh()
+            else:
+                _LOGGER.error("Failed to turn off %s", self._setting_id)
+        except Exception as err:
+            _LOGGER.error("Error turning off %s: %s", self._setting_id, err) 
