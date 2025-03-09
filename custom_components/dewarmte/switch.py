@@ -123,7 +123,7 @@ class DeWarmteSwitch(CoordinatorEntity, SwitchEntity):
                 self.coordinator.data[self._setting_id] = {"value": True}
                 self.async_write_ha_state()
                 # Trigger an immediate data update
-                await self.coordinator.async_request_refresh()
+               # await self.coordinator.async_request_refresh()
             else:
                 _LOGGER.error("Failed to turn on %s", self._setting_id)
         except Exception as err:
@@ -138,7 +138,7 @@ class DeWarmteSwitch(CoordinatorEntity, SwitchEntity):
                 self.coordinator.data[self._setting_id] = {"value": False}
                 self.async_write_ha_state()
                 # Trigger an immediate data update
-                await self.coordinator.async_request_refresh()
+               # await self.coordinator.async_request_refresh()
             else:
                 _LOGGER.error("Failed to turn off %s", self._setting_id)
         except Exception as err:
