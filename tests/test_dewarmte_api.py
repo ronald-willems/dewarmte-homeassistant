@@ -1,8 +1,8 @@
 """Test script for DeWarmte API."""
 import asyncio
-import json
 import os
 import sys
+import yaml
 from typing import Any
 
 import aiohttp
@@ -25,13 +25,16 @@ def print_section(title: str, data: dict[str, Any]) -> None:
 
 async def get_config() -> dict:
     """Get test configuration."""
-    config_path = os.path.join(os.path.dirname(__file__), "test_config.json")
+    config_path = os.path.join(os.path.dirname(__file__), "secrets.yaml")
+    template_path = os.path.join(os.path.dirname(__file__), "secrets.template.yaml")
+    
     if not os.path.exists(config_path):
         print(f"Config file not found at {config_path}")
+        print(f"Please create it from {template_path}")
         return None
         
-    with open(config_path) as f:
-        return json.load(f)
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
 
 async def test_status_data(api: DeWarmteApiClient) -> None:
     """Test getting status data."""
@@ -101,8 +104,8 @@ async def main() -> None:
     session = aiohttp.ClientSession()
     try:
         api = DeWarmteApiClient(
-            username=config["username"],
-            password=config["password"],
+            username=config["dewarmte"]["username"],
+            password=config["dewarmte"]["password"],
             session=session
         )
 

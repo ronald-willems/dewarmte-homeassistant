@@ -1,3 +1,6 @@
+# Secrets file
+tests/secrets.yaml
+
 # Python
 __pycache__/
 *.py[cod]
