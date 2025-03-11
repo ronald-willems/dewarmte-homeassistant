@@ -39,8 +39,4 @@ Thumbs.db
 
 # Local development
 config.local.json
-test_config.json
-
-# Secrets
-secrets.yaml
-tests/secrets.yaml 
+test_config.json 
