@@ -40,6 +40,8 @@ Future features planned:
 Feel free to contribute by creating issues or pull requests.
 
 ## Next:
+LET OP: GIT niet goed in sync!! Ik  heb checkout gedaan (detached). Wat is dat?
+
 Lets ad some more home assistant entities to this project. There is another page that contains numbers that can be edited. The page has the same url as the dashboard page, with only one difference: 'dashboard' should be replaced by 'heating'. 
 
 Find the numbers on the page an make entities of those in homeassistant. Don't add any extra switches. Only numbers
