@@ -7,6 +7,7 @@ from typing import Any, AsyncGenerator
 
 import aiohttp
 import pytest
+import pytest_asyncio
 from aiohttp import ClientSession
 
 # Add parent directory to path so we can import the custom component
@@ -38,13 +39,13 @@ async def get_config() -> dict:
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def session() -> AsyncGenerator[ClientSession, None]:
     """Create and yield an aiohttp ClientSession."""
     async with aiohttp.ClientSession() as session:
         yield session
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def api(session: AsyncGenerator[ClientSession, None]) -> DeWarmteApiClient:
     """Create and yield a DeWarmte API client."""
     config = await get_config()
