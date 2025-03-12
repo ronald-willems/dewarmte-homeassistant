@@ -3,64 +3,70 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, Dict, Optional, Tuple
 import asyncio
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 from .auth import DeWarmteAuth
-from .const import (
-    SENSOR_WATER_FLOW,
-    SENSOR_SUPPLY_TEMP,
-    SENSOR_OUTSIDE_TEMP,
-    SENSOR_HEAT_INPUT,
-    SENSOR_RETURN_TEMP,
-    SENSOR_ELEC_CONSUMP,
-    SENSOR_PUMP_AO_STATE,
-    SENSOR_HEAT_OUTPUT,
-    SENSOR_BOILER_STATE,
-    SENSOR_THERMOSTAT_STATE,
-    SENSOR_TOP_TEMP,
-    SENSOR_BOTTOM_TEMP,
-    SENSOR_HEAT_OUTPUT_PUMP_T,
-    SENSOR_ELEC_CONSUMP_PUMP_T,
-    SENSOR_PUMP_T_STATE,
-    SENSOR_PUMP_T_HEATER_STATE,
-)
+from .models import ValueUnit
+from .models.device import Device, DeviceInfo, DeviceState, DeviceSensor
+from .models.sensor import SENSOR_DEFINITIONS, SensorDefinition, SensorDeviceClass
+from .models.settings import ConnectionSettings, IntegrationSettings
 
 _LOGGER = logging.getLogger(__name__)
 
 class DeWarmteApiClient:
     """Client for interacting with the DeWarmte API."""
 
-    def __init__(self, username: str, password: str, session: aiohttp.ClientSession) -> None:
+    def __init__(
+        self, 
+        connection_settings: ConnectionSettings,
+        session: aiohttp.ClientSession
+    ) -> None:
         """Initialize the client."""
-        self._auth = DeWarmteAuth(username, password, session)
+        self._auth = DeWarmteAuth(
+            connection_settings.username,
+            connection_settings.password,
+            session
+        )
         self._session = session
-        self._csrf_token: str | None = None
-        self._device_id: str | None = None
-        self._product_id: str | None = None
+        self._csrf_token: Optional[str] = None
+        self._device: Optional[Device] = None
+        self._connection_settings = connection_settings
+
+    @property
+    def device(self) -> Optional[Device]:
+        """Get the current device."""
+        return self._device
 
     async def async_login(self) -> bool:
         """Login to the DeWarmte website."""
         success, csrf_token, device_id, product_id = await self._auth.login()
         if success and csrf_token and device_id and product_id:
             self._csrf_token = csrf_token
-            self._device_id = device_id
-            self._product_id = product_id
+            self._device = Device(
+                device_id=device_id,
+                info=DeviceInfo(
+                    name=f"DeWarmte {device_id}",
+                    model=product_id,
+                ),
+                state=DeviceState(online=True),
+                sensors={}
+            )
             return True
         return False
 
-    async def async_get_status_data(self) -> dict[str, Any]:
+    async def async_get_status_data(self) -> Dict[str, DeviceSensor]:
         """Get data from the status page."""
-        if not self._device_id or not self._product_id:
-            _LOGGER.error("No device ID or product ID available")
+        if not self._device:
+            _LOGGER.error("No device available")
             return {}
 
         try:
             # Get the status page
-            status_url = f"{self._auth.base_url}/status/{self._device_id}/{self._product_id}/"
+            status_url = f"{self._auth.base_url}/status/{self._device.device_id}/{self._device.info.model}/"
             async with self._session.get(
                 status_url,
                 headers=self._auth.headers,
@@ -75,27 +81,7 @@ class DeWarmteApiClient:
 
                 # Parse the HTML
                 soup = BeautifulSoup(html, "html.parser")
-                data = {}
-
-                # Define variable mappings
-                var_mappings = {
-                    "WaterFlow": (SENSOR_WATER_FLOW, float, "L/min"),
-                    "SupplyTemp": (SENSOR_SUPPLY_TEMP, float, "°C"),
-                    "OutSideTemp": (SENSOR_OUTSIDE_TEMP, float, "°C"),
-                    "HeatInput": (SENSOR_HEAT_INPUT, float, "kW"),
-                    "ReturnTemp": (SENSOR_RETURN_TEMP, float, "°C"),
-                    "ElecConsump": (SENSOR_ELEC_CONSUMP, float, "kW"),
-                    "PompAoOnOff": (SENSOR_PUMP_AO_STATE, int, None),
-                    "HeatOutPut": (SENSOR_HEAT_OUTPUT, float, "kW"),
-                    "BoilerOnOff": (SENSOR_BOILER_STATE, int, None),
-                    "ThermostatOnOff": (SENSOR_THERMOSTAT_STATE, int, None),
-                    "TopTemp": (SENSOR_TOP_TEMP, float, "°C"),
-                    "BottomTemp": (SENSOR_BOTTOM_TEMP, float, "°C"),
-                    "HeatOutputPompT": (SENSOR_HEAT_OUTPUT_PUMP_T, float, "kW"),
-                    "ElecConsumpPompT": (SENSOR_ELEC_CONSUMP_PUMP_T, float, "kW"),
-                    "PompTOnOff": (SENSOR_PUMP_T_STATE, int, None),
-                    "PompTHeaterOnOff": (SENSOR_PUMP_T_HEATER_STATE, int, None)
-                }
+                sensors: Dict[str, DeviceSensor] = {}
 
                 # Find all script tags
                 for script in soup.find_all("script"):
@@ -103,40 +89,48 @@ class DeWarmteApiClient:
                     if not script_text:
                         continue
 
-                    # Process each variable mapping
-                    for var_name, (sensor_name, convert_func, unit) in var_mappings.items():
-                        pattern = f'var\\s+{var_name}\\s*=\\s*"([^"]*)"'
+                    # Process each sensor definition
+                    for key, definition in SENSOR_DEFINITIONS.items():
+                        pattern = f'var\\s+{definition.var_name}\\s*=\\s*"([^"]*)"'
                         match = re.search(pattern, script_text)
                         if match:
                             try:
-                                value = convert_func(match.group(1))
-                                data_entry = {"value": value}
-                                if unit:
-                                    data_entry["unit"] = unit
-                                data[sensor_name] = data_entry
-                                _LOGGER.debug(f"Found {sensor_name}: {value} {unit if unit else ''}")
+                                value = definition.convert_func(match.group(1))
+                                sensors[key] = DeviceSensor(
+                                    definition=definition,
+                                    state=ValueUnit(
+                                        value=value,
+                                        unit=definition.unit
+                                    )
+                                )
+                                _LOGGER.debug(
+                                    f"Found {definition.name}: {value} "
+                                    f"{definition.unit if definition.unit else ''}"
+                                )
                             except (ValueError, TypeError) as err:
-                                _LOGGER.error(f"Error parsing {sensor_name}: {err}")
+                                _LOGGER.error(f"Error parsing {definition.name}: {err}")
 
-                if not data:
+                if not sensors:
                     _LOGGER.error("No data found in status page")
                     return {}
 
-                _LOGGER.info(f"Successfully parsed {len(data)} values from status page")
-                return data
+                # Update device sensors
+                self._device.sensors = sensors
+                _LOGGER.info(f"Successfully parsed {len(sensors)} values from status page")
+                return sensors
 
         except Exception as err:
             _LOGGER.error("Error getting status data: %s", err)
             return {}
 
-    async def async_get_basic_settings(self) -> dict[str, Any]:
+    async def async_get_basic_settings(self) -> Dict[str, DeviceSensor]:
         """Get basic settings from the settings page."""
-        if not self._device_id or not self._product_id:
-            _LOGGER.error("No device ID or product ID available")
+        if not self._device:
+            _LOGGER.error("No device available")
             return {}
 
         try:
-            settings_url = f"{self._auth.base_url}/basic_settings/{self._device_id}/{self._product_id}/"
+            settings_url = f"{self._auth.base_url}/basic_settings/{self._device.device_id}/{self._device.info.model}/"
             async with self._session.get(
                 settings_url,
                 headers=self._auth.headers,
@@ -151,7 +145,7 @@ class DeWarmteApiClient:
 
                 # Parse the HTML
                 soup = BeautifulSoup(html, "html.parser")
-                data = {}
+                settings: Dict[str, DeviceSensor] = {}
 
                 # Find all checkboxes in the form
                 checkboxes = soup.find_all("input", type="checkbox")
@@ -159,15 +153,30 @@ class DeWarmteApiClient:
                     name = checkbox.get("name")
                     if name:
                         is_checked = checkbox.get("checked") is not None
-                        data[name] = {"value": is_checked}
+                        # Create a sensor definition for this setting
+                        settings[name] = DeviceSensor(
+                            definition=SensorDefinition(
+                                key=name,
+                                name=name.replace("_", " ").title(),
+                                var_name=name,
+                                device_class=SensorDeviceClass.ENUM,
+                                state_class=None,
+                                unit=None,
+                                convert_func=bool
+                            ),
+                            state=ValueUnit(
+                                value=is_checked,
+                                unit=None
+                            )
+                        )
                         _LOGGER.debug(f"Found setting {name}: {is_checked}")
 
-                if not data:
+                if not settings:
                     _LOGGER.error("No settings found in basic settings page")
                     return {}
 
-                _LOGGER.info(f"Successfully parsed {len(data)} settings")
-                return data
+                _LOGGER.info(f"Successfully parsed {len(settings)} settings")
+                return settings
 
         except Exception as err:
             _LOGGER.error("Error getting basic settings: %s", err)
@@ -175,13 +184,13 @@ class DeWarmteApiClient:
 
     async def async_update_basic_setting(self, setting_name: str, value: bool) -> bool:
         """Update a basic setting."""
-        if not self._device_id or not self._product_id:
-            _LOGGER.error("No device ID or product ID available")
+        if not self._device:
+            _LOGGER.error("No device available")
             return False
 
         try:
             # Get the settings page to get the current CSRF token
-            settings_url = f"{self._auth.base_url}/basic_settings/{self._device_id}/{self._product_id}/"
+            settings_url = f"{self._auth.base_url}/basic_settings/{self._device.device_id}/{self._device.info.model}/"
             async with self._session.get(
                 settings_url,
                 headers=self._auth.headers,
@@ -231,6 +240,11 @@ class DeWarmteApiClient:
                     if response.status not in (200, 302):
                         _LOGGER.error("Failed to update setting: %d", response.status)
                         return False
+
+                    # Update the device's settings if successful
+                    if self._device and setting_name in self._device.sensors:
+                        sensor = self._device.sensors[setting_name]
+                        sensor.state.value = value
 
                     _LOGGER.info("Successfully updated %s to %s", setting_name, value)
                     return True

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any
+from typing import Any, Dict, Optional
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
@@ -20,6 +20,8 @@ from homeassistant.helpers.update_coordinator import (
 
 from .api import DeWarmteApiClient
 from .const import DOMAIN
+from .models.device import DeviceSensor
+from .models.settings import ConnectionSettings
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,9 +33,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Create API client
     session = async_get_clientsession(hass)
-    client = DeWarmteApiClient(
+    connection_settings = ConnectionSettings(
         username=entry.data["username"],
-        password=entry.data["password"],
+        password=entry.data["password"]
+    )
+    client = DeWarmteApiClient(
+        connection_settings=connection_settings,
         session=session,
     )
 
@@ -59,7 +64,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return unload_ok
 
-class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[Dict[str, DeviceSensor]]):
     """Class to manage fetching data from the API."""
 
     def __init__(self, hass: HomeAssistant, api: DeWarmteApiClient) -> None:
@@ -71,9 +76,13 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=60),
         )
         self.api = api
-        self._device_id = f"{api._device_id}_{api._product_id}" if api._device_id and api._product_id else None
 
-    async def _async_update_data(self) -> dict[str, Any]:
+    @property
+    def device(self) -> Optional[Device]:
+        """Get the current device."""
+        return self.api.device
+
+    async def _async_update_data(self) -> Dict[str, DeviceSensor]:
         """Update data via library."""
         try:
             # First ensure we're logged in
@@ -84,10 +93,6 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             status_data = await self.api.async_get_status_data()
             settings_data = await self.api.async_get_basic_settings()
 
-            # Update device ID if needed
-            if not self._device_id and self.api._device_id and self.api._product_id:
-                self._device_id = f"{self.api._device_id}_{self.api._product_id}"
-
             # Combine the data
             return {**status_data, **settings_data}
         except Exception as exception:
@@ -96,11 +101,14 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        if not self._device_id:
+        if not self.device:
             return None
+            
         return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name="DeWarmte Heat Pump",
-            manufacturer="DeWarmte",
-            model="Heat Pump",
+            identifiers={(DOMAIN, self.device.device_id)},
+            name=self.device.info.name,
+            manufacturer=self.device.info.manufacturer,
+            model=self.device.info.model,
+            sw_version=self.device.info.sw_version,
+            hw_version=self.device.info.hw_version,
         ) 

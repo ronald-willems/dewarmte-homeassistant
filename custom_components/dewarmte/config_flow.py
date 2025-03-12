@@ -19,6 +19,7 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
 )
+from .models.settings import ConnectionSettings
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,10 +53,16 @@ class DeWarmteConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Get the client session from Home Assistant
             session = async_get_clientsession(self.hass)
             
-            # Create the API client with the session
-            client = DeWarmteApiClient(
+            # Create connection settings from user input
+            settings = ConnectionSettings(
                 username=user_input[CONF_USERNAME],
                 password=user_input[CONF_PASSWORD],
+                update_interval=user_input.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+            )
+            
+            # Create the API client with the session and settings
+            client = DeWarmteApiClient(
+                settings=settings,
                 session=session,
             )
             
@@ -64,17 +71,24 @@ class DeWarmteConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_auth"
             else:
                 await self.async_set_unique_id(
-                    f"{DOMAIN}_{user_input[CONF_USERNAME]}"
+                    f"{DOMAIN}_{settings.username}"
                 )
                 self._abort_if_unique_id_configured()
 
                 return self.async_create_entry(
-                    title=f"DeWarmte ({user_input[CONF_USERNAME]})",
-                    data=user_input,
+                    title=f"DeWarmte ({settings.username})",
+                    data={
+                        CONF_USERNAME: settings.username,
+                        CONF_PASSWORD: settings.password,
+                        CONF_UPDATE_INTERVAL: settings.update_interval,
+                    },
                 )
                 
-        except aiohttp.ClientError:
+        except aiohttp.ClientConnectionError:
             errors["base"] = "cannot_connect"
+        except aiohttp.ClientError as err:
+            _LOGGER.error("API error occurred: %s", err)
+            errors["base"] = "api_error"
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected exception: %s", err)
             errors["base"] = "unknown"

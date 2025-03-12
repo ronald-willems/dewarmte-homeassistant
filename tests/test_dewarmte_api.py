@@ -14,22 +14,25 @@ from aiohttp import ClientSession
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from custom_components.dewarmte.api import DeWarmteApiClient
+from custom_components.dewarmte.models.settings import ConnectionSettings
+from custom_components.dewarmte.models.device import DeviceSensor
+from custom_components.dewarmte.models import ValueUnit
 
 def print_section(title: str, data: dict[str, Any]) -> None:
     """Print a section of data with a title."""
     print(f"\n=== {title} ===")
     for key, value in data.items():
-        if isinstance(value, dict):
-            val = value.get("value")
-            unit = value.get("unit", "")
+        if isinstance(value, DeviceSensor):
+            val = value.state.value
+            unit = value.state.unit or ""
             print(f"{key}: {val} {unit}".strip())
         else:
             print(f"{key}: {value}")
 
 async def get_config() -> dict:
     """Get test configuration."""
-    config_path = os.path.join(os.path.dirname(__file__), "secrets.yaml")
-    template_path = os.path.join(os.path.dirname(__file__), "secrets.template.yaml")
+    config_path = "secrets.yaml"
+    template_path = "secrets.template.yaml"
     
     if not os.path.exists(config_path):
         print(f"Config file not found at {config_path}")
@@ -52,9 +55,13 @@ async def api(session: AsyncGenerator[ClientSession, None]) -> DeWarmteApiClient
     if not config:
         pytest.skip("No config file found")
 
-    api = DeWarmteApiClient(
+    connection_settings = ConnectionSettings(
         username=config["dewarmte"]["username"],
-        password=config["dewarmte"]["password"],
+        password=config["dewarmte"]["password"]
+    )
+
+    api = DeWarmteApiClient(
+        connection_settings=connection_settings,
         session=session
     )
 
@@ -63,31 +70,36 @@ async def api(session: AsyncGenerator[ClientSession, None]) -> DeWarmteApiClient
     
     return api
 
-def validate_temperature(name: str, value: float) -> None:
+def validate_temperature(name: str, sensor: DeviceSensor) -> None:
     """Validate that a temperature value is within reasonable bounds."""
+    value = sensor.state.value
     assert -50 <= value <= 50, f"{name} temperature {value}°C is outside reasonable bounds (-50°C to 50°C)"
 
-def validate_percentage(name: str, value: float) -> None:
+def validate_percentage(name: str, sensor: DeviceSensor) -> None:
     """Validate that a percentage value is between 0 and 100."""
+    value = sensor.state.value
     assert 0 <= value <= 100, f"{name} value {value}% is outside valid range (0% to 100%)"
 
-def validate_power(name: str, value: float) -> None:
+def validate_power(name: str, sensor: DeviceSensor) -> None:
     """Validate that a power value is non-negative and within reasonable bounds."""
+    value = sensor.state.value
     assert 0 <= value <= 100, f"{name} value {value}kW is outside reasonable bounds (0kW to 100kW)"
 
-def validate_flow(value: float) -> None:
+def validate_flow(sensor: DeviceSensor) -> None:
     """Validate that a flow value is non-negative and within reasonable bounds."""
+    value = sensor.state.value
     assert 0 <= value <= 100, f"Flow value {value}L/min is outside reasonable bounds (0L/min to 100L/min)"
 
-def validate_state(name: str, value: int) -> None:
+def validate_state(name: str, sensor: DeviceSensor) -> None:
     """Validate that a state value is either 0 or 1."""
+    value = sensor.state.value
     assert value in [0, 1], f"{name} state {value} is invalid (must be 0 or 1)"
 
 @pytest.mark.asyncio
 async def test_login(api: DeWarmteApiClient) -> None:
     """Test that we can log in successfully."""
-    # If we get here, login was successful (handled in fixture)
-    assert True
+    assert api.device is not None, "Device not initialized after login"
+    assert api.device.state.online, "Device not marked as online after login"
 
 @pytest.mark.asyncio
 async def test_status_data(api: DeWarmteApiClient) -> None:
@@ -96,26 +108,26 @@ async def test_status_data(api: DeWarmteApiClient) -> None:
     assert status_data is not None, "Failed to get status data"
 
     # Validate temperatures
-    validate_temperature("Supply", float(status_data["supply_temperature"]["value"]))
-    validate_temperature("Return", float(status_data["return_temperature"]["value"]))
-    validate_temperature("Outside", float(status_data["outside_temperature"]["value"]))
-    validate_temperature("Top", float(status_data["top_temperature"]["value"]))
-    validate_temperature("Bottom", float(status_data["bottom_temperature"]["value"]))
+    validate_temperature("Supply", status_data["supply_temp"])
+    validate_temperature("Return", status_data["return_temp"])
+    validate_temperature("Outside", status_data["outside_temp"])
+    validate_temperature("Top", status_data["top_temp"])
+    validate_temperature("Bottom", status_data["bottom_temp"])
 
     # Validate performance metrics
-    validate_flow(float(status_data["water_flow"]["value"]))
-    validate_power("Heat input", float(status_data["heat_input"]["value"]))
-    validate_power("Heat output", float(status_data["heat_output"]["value"]))
-    validate_power("Electricity consumption", float(status_data["electricity_consumption"]["value"]))
-    validate_power("Heat output pump T", float(status_data["heat_output_pump_t"]["value"]))
-    validate_power("Electricity consumption pump T", float(status_data["electricity_consumption_pump_t"]["value"]))
+    validate_flow(status_data["water_flow"])
+    validate_power("Heat input", status_data["heat_input"])
+    validate_power("Heat output", status_data["heat_output"])
+    validate_power("Electricity consumption", status_data["elec_consump"])
+    validate_power("Heat output pump T", status_data["heat_output_pump_t"])
+    validate_power("Electricity consumption pump T", status_data["elec_consump_pump_t"])
 
     # Validate states
-    validate_state("Pump AO", int(status_data["pump_ao_state"]["value"]))
-    validate_state("Boiler", int(status_data["boiler_state"]["value"]))
-    validate_state("Thermostat", int(status_data["thermostat_state"]["value"]))
-    validate_state("Pump T", int(status_data["pump_t_state"]["value"]))
-    validate_state("Pump T heater", int(status_data["pump_t_heater_state"]["value"]))
+    validate_state("Pump AO", status_data["pump_ao_state"])
+    validate_state("Boiler", status_data["boiler_state"])
+    validate_state("Thermostat", status_data["thermostat_state"])
+    validate_state("Pump T", status_data["pump_t_state"])
+    validate_state("Pump T heater", status_data["pump_t_heater_state"])
 
 @pytest.mark.asyncio
 async def test_basic_settings(api: DeWarmteApiClient) -> None:
@@ -125,11 +137,11 @@ async def test_basic_settings(api: DeWarmteApiClient) -> None:
     assert settings is not None, "Failed to get basic settings"
 
     # Store original values to restore later
-    original_values = {name: setting["value"] for name, setting in settings.items()}
+    original_values = {name: sensor.state.value for name, sensor in settings.items()}
 
     # Test each setting
-    for setting_name, setting in settings.items():
-        current_value = setting["value"]
+    for setting_name, sensor in settings.items():
+        current_value = sensor.state.value
         new_value = not current_value
 
         # Try to update the setting
@@ -141,7 +153,7 @@ async def test_basic_settings(api: DeWarmteApiClient) -> None:
         assert updated_settings is not None, f"Failed to get updated settings after changing {setting_name}"
         
         if setting_name != "default_heating":  # Known issue with verification
-            assert updated_settings[setting_name]["value"] == new_value, \
+            assert updated_settings[setting_name].state.value == new_value, \
                 f"Setting {setting_name} did not update correctly"
 
         # Revert the setting
@@ -153,7 +165,7 @@ async def test_basic_settings(api: DeWarmteApiClient) -> None:
         assert final_settings is not None, f"Failed to get final settings after reverting {setting_name}"
         
         if setting_name != "default_heating":  # Known issue with verification
-            assert final_settings[setting_name]["value"] == current_value, \
+            assert final_settings[setting_name].state.value == current_value, \
                 f"Setting {setting_name} did not revert correctly"
 
     # Final verification that all settings are back to original values
@@ -162,5 +174,5 @@ async def test_basic_settings(api: DeWarmteApiClient) -> None:
     
     for name, original_value in original_values.items():
         if name != "default_heating":  # Known issue with verification
-            assert final_settings[name]["value"] == original_value, \
+            assert final_settings[name].state.value == original_value, \
                 f"Setting {name} did not maintain its original value" 

@@ -4,19 +4,21 @@
             "user": {
                 "data": {
                     "username": "Email",
-                    "password": "Password"
+                    "password": "Password",
+                    "update_interval": "Update interval (seconds)"
                 },
                 "description": "Enter your MyDeWarmte credentials",
                 "title": "MyDeWarmte Login"
             }
         },
         "error": {
-            "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
+            "cannot_connect": "Failed to connect to DeWarmte servers",
+            "invalid_auth": "Invalid email or password",
+            "api_error": "API error occurred",
+            "unknown": "Unexpected error occurred"
         },
         "abort": {
-            "already_configured": "Device is already configured"
+            "already_configured": "This DeWarmte account is already configured"
         }
     },
     "entity": {
