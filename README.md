@@ -27,10 +27,18 @@ The integration requires the following configuration:
 
 ## Development
 
-This is a work in progress. The integration currently supports:
-- Website scraping from mydewarmte.com
-- Temperature monitoring
-- System status monitoring
+To set up the development environment:
+
+1. Clone this repository
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   pip install -r requirements-test.txt
+   ```
+3. Copy `tests/secrets.template.yaml` to `tests/secrets.yaml` and fill in your credentials
+4. Run tests: `python -m pytest tests/`
+
+Note: The test suite requires Python 3.8 or higher and uses async/await functionality.
 
 Future features planned:
 - More detailed system information
