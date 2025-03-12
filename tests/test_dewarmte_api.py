@@ -52,17 +52,16 @@ async def api(session: AsyncGenerator[ClientSession, None]) -> DeWarmteApiClient
     if not config:
         pytest.skip("No config file found")
 
-    async for session in session:
-        api = DeWarmteApiClient(
-            username=config["dewarmte"]["username"],
-            password=config["dewarmte"]["password"],
-            session=session
-        )
+    api = DeWarmteApiClient(
+        username=config["dewarmte"]["username"],
+        password=config["dewarmte"]["password"],
+        session=session
+    )
 
-        if not await api.async_login():
-            pytest.fail("Login failed")
-        
-        return api
+    if not await api.async_login():
+        pytest.fail("Login failed")
+    
+    return api
 
 def validate_temperature(name: str, value: float) -> None:
     """Validate that a temperature value is within reasonable bounds."""
@@ -93,7 +92,6 @@ async def test_login(api: DeWarmteApiClient) -> None:
 @pytest.mark.asyncio
 async def test_status_data(api: DeWarmteApiClient) -> None:
     """Test getting and validating status data."""
-    api = await api  # Await the fixture
     status_data = await api.async_get_status_data()
     assert status_data is not None, "Failed to get status data"
 
@@ -122,7 +120,6 @@ async def test_status_data(api: DeWarmteApiClient) -> None:
 @pytest.mark.asyncio
 async def test_basic_settings(api: DeWarmteApiClient) -> None:
     """Test basic settings functionality."""
-    api = await api  # Await the fixture
     # Get initial settings
     settings = await api.async_get_basic_settings()
     assert settings is not None, "Failed to get basic settings"
