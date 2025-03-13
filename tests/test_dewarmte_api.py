@@ -49,8 +49,11 @@ async def session() -> AsyncGenerator[ClientSession, None]:
         yield session
 
 @pytest_asyncio.fixture
-async def api(session: AsyncGenerator[ClientSession, None]) -> DeWarmteApiClient:
+async def api(session: AsyncGenerator[ClientSession, None], use_real_website: bool) -> DeWarmteApiClient:
     """Create and yield a DeWarmte API client."""
+    if not use_real_website:
+        pytest.skip("Not running against real website")
+
     config = await get_config()
     if not config:
         pytest.skip("No config file found")
