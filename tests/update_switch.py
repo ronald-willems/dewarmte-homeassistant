@@ -1,9 +1,9 @@
 """Test script to update a specific switch."""
 import asyncio
-import json
 import os
 import sys
 import argparse
+import yaml
 from typing import Any
 
 import aiohttp
@@ -12,16 +12,18 @@ import aiohttp
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from custom_components.dewarmte.api import DeWarmteApiClient
+from custom_components.dewarmte.models.settings import ConnectionSettings
 
 async def get_config() -> dict:
     """Get test configuration."""
-    config_path = os.path.join(os.path.dirname(__file__), "test_config.json")
+    config_path = "secrets.yaml"
     if not os.path.exists(config_path):
         print(f"Config file not found at {config_path}")
         return None
         
-    with open(config_path) as f:
-        return json.load(f)
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+        return config["dewarmte"]
 
 async def update_switch(api: DeWarmteApiClient, switch_name: str, new_state: bool) -> None:
     """Update a switch to the specified state."""
@@ -33,7 +35,7 @@ async def update_switch(api: DeWarmteApiClient, switch_name: str, new_state: boo
         print(f"Failed to get {switch_name} setting")
         return
     
-    current_state = settings[switch_name]["value"]
+    current_state = settings[switch_name].state.value
     print(f"Current {switch_name} state: {current_state}")
     
     if current_state == new_state:
@@ -48,7 +50,7 @@ async def update_switch(api: DeWarmteApiClient, switch_name: str, new_state: boo
         
         # Verify the change
         settings = await api.async_get_basic_settings()
-        if settings and settings[switch_name]["value"] == new_state:
+        if settings and settings[switch_name].state.value == new_state:
             print(f"Verified {switch_name} is now {new_state}")
         else:
             print(f"Warning: {switch_name} may not have been set correctly")
@@ -67,11 +69,14 @@ async def main() -> None:
     if not config:
         return
 
-    session = aiohttp.ClientSession()
-    try:
-        api = DeWarmteApiClient(
+    async with aiohttp.ClientSession() as session:
+        connection_settings = ConnectionSettings(
             username=config["username"],
-            password=config["password"],
+            password=config["password"]
+        )
+        
+        api = DeWarmteApiClient(
+            connection_settings=connection_settings,
             session=session
         )
 
@@ -82,9 +87,6 @@ async def main() -> None:
         print("Login successful\n")
 
         await update_switch(api, args.switch_name, args.state)
-
-    finally:
-        await session.close()
 
 if __name__ == "__main__":
     asyncio.run(main()) 
