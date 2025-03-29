@@ -161,5 +161,9 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
             settings["heating_performance_backup_temperature"] = value
 
         if settings:
-            await self.coordinator.api.async_update_operation_settings(settings)
-            await self.coordinator.async_request_refresh() 
+            try:
+                await self.coordinator.api.async_update_operation_settings(settings)
+                await self.coordinator.async_request_refresh()
+            except ValueError as err:
+                _LOGGER.error("Failed to update setting %s: %s", key, str(err))
+                raise 

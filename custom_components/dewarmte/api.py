@@ -128,23 +128,46 @@ class DeWarmteApiClient:
             _LOGGER.error("Error getting operation settings: %s", str(err))
             return None
 
-    async def async_update_operation_settings(self, settings: Dict[str, Any]) -> bool:
+    async def async_update_operation_settings(self, settings: dict[str, Any]) -> None:
         """Update operation settings."""
         if not self._device:
-            _LOGGER.error("No device available")
-            return False
+            raise ValueError("No device selected")
 
-        try:
-            settings_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/"
-            async with self._session.patch(settings_url, json=settings, headers=self._auth.headers) as response:
-                if response.status != 200:
-                    _LOGGER.error("Failed to update settings: %d", response.status)
-                    return False
-                    
-                # Update local settings
-                await self.async_get_operation_settings()
-                return True
-                
-        except Exception as err:
-            _LOGGER.error("Error updating settings: %s", str(err))
-            return False 
+        # If any heat curve settings are being updated, we need to send all heat curve settings
+        if any(key.startswith("heat_curve_") for key in settings.keys()):
+            # Get current heat curve settings
+            current_settings = await self.async_get_operation_settings()
+            if not current_settings:
+                raise ValueError("Could not get current settings")
+
+            # Update only the heat curve settings that were provided
+            heat_curve_settings = {
+                "heat_curve_mode": current_settings.heat_curve.mode,
+                "heating_kind": current_settings.heat_curve.heating_kind,
+                "heat_curve_s1_outside_temp": current_settings.heat_curve.s1_outside_temp,
+                "heat_curve_s1_target_temp": current_settings.heat_curve.s1_target_temp,
+                "heat_curve_s2_outside_temp": current_settings.heat_curve.s2_outside_temp,
+                "heat_curve_s2_target_temp": current_settings.heat_curve.s2_target_temp,
+                "heat_curve_fixed_temperature": current_settings.heat_curve.fixed_temperature,
+                "heat_curve_use_smart_correction": current_settings.heat_curve.use_smart_correction,
+            }
+
+            # Update with new values
+            heat_curve_settings.update(settings)
+
+            # Send all heat curve settings at once
+            await self._session.post(
+                f"{self._base_url}/customer/products/{self._device.device_id}/settings/heat-curve/",
+                json=heat_curve_settings,
+                headers=self._auth.headers,
+            )
+        else:
+            # For non-heat curve settings, use the regular settings endpoint
+            await self._session.post(
+                f"{self._base_url}/customer/products/{self._device.device_id}/settings/",
+                json=settings,
+                headers=self._auth.headers,
+            )
+
+        # Refresh settings after update
+        await self.async_get_operation_settings() 
