@@ -35,7 +35,11 @@ from .models.settings import ConnectionSettings
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.NUMBER,
+    Platform.SELECT,
+]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up DeWarmte from a config entry."""
@@ -122,108 +126,8 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[Dict[str, DeviceSensor
             if not status_data:
                 raise UpdateFailed("Failed to get status data")
 
-            # Get operation settings
-            operation_settings = await self.api.async_get_operation_settings()
-            if operation_settings:
-                # Convert operation settings to sensors
-                settings_data = {}
-                
-                # Heat curve settings
-                settings_data["heat_curve_mode"] = DeviceSensor(
-                    key="heat_curve_mode",
-                    name="Heat Curve Mode",
-                    value=operation_settings.heat_curve.mode.value,
-                    device_class=None,
-                    state_class=None,
-                    unit=None
-                )
-                settings_data["heat_curve_s1_outside_temp"] = DeviceSensor(
-                    key="heat_curve_s1_outside_temp",
-                    name="Heat Curve S1 Outside Temperature",
-                    value=operation_settings.heat_curve.s1_outside_temp,
-                    device_class=SensorDeviceClass.TEMPERATURE,
-                    state_class=SensorStateClass.MEASUREMENT,
-                    unit=UnitOfTemperature.CELSIUS
-                )
-                settings_data["heat_curve_s1_target_temp"] = DeviceSensor(
-                    key="heat_curve_s1_target_temp",
-                    name="Heat Curve S1 Target Temperature",
-                    value=operation_settings.heat_curve.s1_target_temp,
-                    device_class=SensorDeviceClass.TEMPERATURE,
-                    state_class=SensorStateClass.MEASUREMENT,
-                    unit=UnitOfTemperature.CELSIUS
-                )
-                settings_data["heat_curve_s2_outside_temp"] = DeviceSensor(
-                    key="heat_curve_s2_outside_temp",
-                    name="Heat Curve S2 Outside Temperature",
-                    value=operation_settings.heat_curve.s2_outside_temp,
-                    device_class=SensorDeviceClass.TEMPERATURE,
-                    state_class=SensorStateClass.MEASUREMENT,
-                    unit=UnitOfTemperature.CELSIUS
-                )
-                settings_data["heat_curve_s2_target_temp"] = DeviceSensor(
-                    key="heat_curve_s2_target_temp",
-                    name="Heat Curve S2 Target Temperature",
-                    value=operation_settings.heat_curve.s2_target_temp,
-                    device_class=SensorDeviceClass.TEMPERATURE,
-                    state_class=SensorStateClass.MEASUREMENT,
-                    unit=UnitOfTemperature.CELSIUS
-                )
-                settings_data["heat_curve_fixed_temperature"] = DeviceSensor(
-                    key="heat_curve_fixed_temperature",
-                    name="Heat Curve Fixed Temperature",
-                    value=operation_settings.heat_curve.fixed_temperature,
-                    device_class=SensorDeviceClass.TEMPERATURE,
-                    state_class=SensorStateClass.MEASUREMENT,
-                    unit=UnitOfTemperature.CELSIUS
-                )
-                
-                # Performance settings
-                settings_data["heating_performance_mode"] = DeviceSensor(
-                    key="heating_performance_mode",
-                    name="Heating Performance Mode",
-                    value=operation_settings.heating_performance_mode.value,
-                    device_class=None,
-                    state_class=None,
-                    unit=None
-                )
-                settings_data["heating_performance_backup_temperature"] = DeviceSensor(
-                    key="heating_performance_backup_temperature",
-                    name="Heating Performance Backup Temperature",
-                    value=operation_settings.heating_performance_backup_temperature,
-                    device_class=SensorDeviceClass.TEMPERATURE,
-                    state_class=SensorStateClass.MEASUREMENT,
-                    unit=UnitOfTemperature.CELSIUS
-                )
-                
-                # Sound settings
-                settings_data["sound_mode"] = DeviceSensor(
-                    key="sound_mode",
-                    name="Sound Mode",
-                    value=operation_settings.sound_mode.value,
-                    device_class=None,
-                    state_class=None,
-                    unit=None
-                )
-                settings_data["sound_compressor_power"] = DeviceSensor(
-                    key="sound_compressor_power",
-                    name="Sound Compressor Power",
-                    value=operation_settings.sound_compressor_power.value,
-                    device_class=None,
-                    state_class=None,
-                    unit=None
-                )
-                settings_data["sound_fan_speed"] = DeviceSensor(
-                    key="sound_fan_speed",
-                    name="Sound Fan Speed",
-                    value=operation_settings.sound_fan_speed.value,
-                    device_class=None,
-                    state_class=None,
-                    unit=None
-                )
-                
-                # Combine status data and settings
-                return {**status_data, **settings_data}
+            # Get operation settings (needed for number and select entities)
+            await self.api.async_get_operation_settings()
 
             return status_data
 
