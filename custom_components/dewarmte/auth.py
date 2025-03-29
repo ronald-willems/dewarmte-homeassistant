@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import logging
+import asyncio
 from typing import Optional, Tuple
 
 import aiohttp
-import ssl
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,9 +35,6 @@ class DeWarmteAuth:
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:136.0) Gecko/20100101 Firefox/136.0",
             "Authorization": "Bearer null"  # Required for initial login
         }
-        self._ssl_context = ssl.create_default_context()
-        self._ssl_context.check_hostname = False
-        self._ssl_context.verify_mode = ssl.CERT_NONE
 
     async def login(self) -> tuple[bool, str | None, str | None, str | None]:
         """Login to DeWarmte API."""
@@ -49,7 +46,7 @@ class DeWarmteAuth:
                 "password": self._password,
             }
             _LOGGER.debug("Attempting login with email: %s", self._username)
-            async with self._session.post(login_url, json=login_data, headers=self._headers, ssl=self._ssl_context) as response:
+            async with self._session.post(login_url, json=login_data, headers=self._headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Login failed with status %d: %s", response.status, await response.text())
                     return False, None, None, None
@@ -63,7 +60,7 @@ class DeWarmteAuth:
 
             # Get user info
             user_url = f"{self._base_url}/auth/user/"
-            async with self._session.get(user_url, headers=self._headers, ssl=self._ssl_context) as response:
+            async with self._session.get(user_url, headers=self._headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to get user info with status %d: %s", response.status, await response.text())
                     return False, None, None, None
@@ -72,7 +69,7 @@ class DeWarmteAuth:
 
             # Get products info
             products_url = f"{self._base_url}/customer/products/"
-            async with self._session.get(products_url, headers=self._headers, ssl=self._ssl_context) as response:
+            async with self._session.get(products_url, headers=self._headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to get products info with status %d: %s", response.status, await response.text())
                     return False, None, None, None

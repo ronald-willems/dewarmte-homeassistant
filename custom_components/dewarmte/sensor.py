@@ -86,11 +86,11 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
         if not sensor:
             return None
             
-        value = sensor.state.value
+        value = sensor.value
         
         # Convert boolean states to On/Off
         if self.entity_description.device_class == SensorDeviceClass.ENUM:
-            return "On" if value == 1 else "Off"
+            return "On" if value else "Off"
             
         return value
 

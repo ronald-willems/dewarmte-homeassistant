@@ -13,7 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
-from .models.device import DeviceSensor
+from .models.sensor import DeviceSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ class DeWarmteSwitch(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEnt
         """Return true if the switch is on."""
         if not self.coordinator.data or self._setting_id not in self.coordinator.data:
             return None
-        return self.coordinator.data[self._setting_id].state.value
+        return self.coordinator.data[self._setting_id].value
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
@@ -135,7 +135,7 @@ class DeWarmteSwitch(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEnt
             if success:
                 # Update coordinator data
                 if self._setting_id in self.coordinator.data:
-                    self.coordinator.data[self._setting_id].state.value = True
+                    self.coordinator.data[self._setting_id].value = True
                 self.async_write_ha_state()
             else:
                 _LOGGER.error("Failed to turn on %s", self._setting_id)
@@ -149,7 +149,7 @@ class DeWarmteSwitch(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEnt
             if success:
                 # Update coordinator data
                 if self._setting_id in self.coordinator.data:
-                    self.coordinator.data[self._setting_id].state.value = False
+                    self.coordinator.data[self._setting_id].value = False
                 self.async_write_ha_state()
             else:
                 _LOGGER.error("Failed to turn off %s", self._setting_id)

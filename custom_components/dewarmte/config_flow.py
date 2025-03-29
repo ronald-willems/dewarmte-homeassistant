@@ -62,7 +62,7 @@ class DeWarmteConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             
             # Create the API client with the session and settings
             client = DeWarmteApiClient(
-                settings=settings,
+                connection_settings=settings,
                 session=session,
             )
             
