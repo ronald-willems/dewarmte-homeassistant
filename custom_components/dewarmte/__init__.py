@@ -20,7 +20,8 @@ from homeassistant.helpers.update_coordinator import (
 
 from .api import DeWarmteApiClient
 from .const import DOMAIN
-from .models.device import DeviceSensor
+from .models.device import Device
+from .models.sensor import DeviceSensor
 from .models.settings import ConnectionSettings
 
 _LOGGER = logging.getLogger(__name__)

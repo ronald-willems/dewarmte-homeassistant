@@ -1,37 +1,28 @@
-"""Device models for DeWarmte integration."""
+"""Device model for DeWarmte."""
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from . import BaseModel, ValueUnit
-from .sensor import SensorDefinition
-
 @dataclass
-class DeviceInfo(BaseModel):
-    """Device information model."""
-    name: str
-    model: str
-    manufacturer: str = "DeWarmte"
-    sw_version: Optional[str] = None
-    hw_version: Optional[str] = None
-
-@dataclass
-class DeviceState(BaseModel):
-    """Device state model."""
-    online: bool
-    last_update: Optional[str] = None
-    error_code: Optional[int] = None
-    error_message: Optional[str] = None
-
-@dataclass
-class DeviceSensor(BaseModel):
-    """Device sensor model."""
-    definition: SensorDefinition
-    state: ValueUnit
-
-@dataclass
-class Device(BaseModel):
-    """DeWarmte device model."""
+class Device:
+    """Device model."""
     device_id: str
-    info: DeviceInfo
-    state: DeviceState
-    sensors: Dict[str, DeviceSensor] 
+    product_id: str
+    access_token: str
+    name: Optional[str] = None
+    online: bool = False
+
+    @property
+    def is_online(self) -> bool:
+        """Return if the device is online."""
+        return self.online
+
+    @classmethod
+    def from_api_response(cls, device_id: str, product_id: str, access_token: str, name: Optional[str] = None) -> "Device":
+        """Create a device from an API response."""
+        return cls(
+            device_id=device_id,
+            product_id=product_id,
+            access_token=access_token,
+            name=name,
+            online=True  # We assume it's online if we can get the data
+        ) 

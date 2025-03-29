@@ -5,7 +5,7 @@ import logging
 from typing import Optional, Tuple
 
 import aiohttp
-from bs4 import BeautifulSoup
+import ssl
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,107 +16,86 @@ class DeWarmteAuth:
         """Initialize the auth handler."""
         self._username = username
         self._password = password
-        self._base_url = "https://mydewarmte.com"
+        self._base_url = "https://api.mydewarmte.com/v1"
         self._session = session
-        self._csrf_token: str | None = None
+        self._access_token: str | None = None
         self._device_id: str | None = None
         self._product_id: str | None = None
         
         self._headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+            "Accept-Language": "en-US",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Content-Type": "application/json",
             "Origin": "https://mydewarmte.com",
-            "Referer": "https://mydewarmte.com/"
+            "Referer": "https://mydewarmte.com/",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-site",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:136.0) Gecko/20100101 Firefox/136.0",
+            "Authorization": "Bearer null"  # Required for initial login
         }
+        self._ssl_context = ssl.create_default_context()
+        self._ssl_context.check_hostname = False
+        self._ssl_context.verify_mode = ssl.CERT_NONE
 
-    async def _get_csrf_token(self) -> str | None:
-        """Get CSRF token from login page."""
+    async def login(self) -> tuple[bool, str | None, str | None, str | None]:
+        """Login to DeWarmte API."""
         try:
-            async with self._session.get(
-                f"{self._base_url}/",
-                headers=self._headers,
-                ssl=False
-            ) as response:
-                if response.status != 200:
-                    _LOGGER.error("Failed to get login page: %s", response.status)
-                    return None
-
-                html = await response.text()
-                _LOGGER.debug("Login page content: %s", html[:500])
-                
-                soup = BeautifulSoup(html, "html.parser")
-                csrf_input = soup.find("input", {"name": "csrfmiddlewaretoken"})
-                if csrf_input:
-                    token = csrf_input.get("value")
-                    _LOGGER.debug("Found CSRF token: %s", token)
-                    return token
-                _LOGGER.error("No CSRF token found in login page")
-        except Exception as err:
-            _LOGGER.error("Error getting CSRF token: %s", err)
-        return None
-
-    async def login(self) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
-        """Login to the DeWarmte website.
-        
-        Returns:
-            Tuple containing:
-            - Success status (bool)
-            - CSRF token (str or None)
-            - Device ID (str or None)
-            - Product ID (str or None)
-        """
-        try:
-            # Get CSRF token
-            self._csrf_token = await self._get_csrf_token()
-            if not self._csrf_token:
-                return False, None, None, None
-
-            # Update headers with CSRF token
-            self._headers["X-CSRFToken"] = self._csrf_token
-
-            # Submit login form
+            # First get the access token
+            login_url = f"{self._base_url}/auth/token/"
             login_data = {
-                "username": self._username,
+                "email": self._username,
                 "password": self._password,
-                "csrfmiddlewaretoken": self._csrf_token
             }
-            
-            _LOGGER.debug("Attempting login with data: %s", login_data)
-
-            async with self._session.post(
-                f"{self._base_url}/",
-                data=login_data,
-                headers=self._headers,
-                allow_redirects=True,
-                ssl=False
-            ) as response:
-                _LOGGER.debug("Login response status: %d", response.status)
-                _LOGGER.debug("Login response URL: %s", str(response.url))
-                
+            _LOGGER.debug("Attempting login with email: %s", self._username)
+            async with self._session.post(login_url, json=login_data, headers=self._headers, ssl=self._ssl_context) as response:
                 if response.status != 200:
-                    _LOGGER.error("Login failed with status %d", response.status)
+                    _LOGGER.error("Login failed with status %d: %s", response.status, await response.text())
+                    return False, None, None, None
+                data = await response.json()
+                self._access_token = data.get("access")
+                if not self._access_token:
+                    _LOGGER.error("No access token in response")
+                    return False, None, None, None
+                self._headers["Authorization"] = f"Bearer {self._access_token}"
+                _LOGGER.debug("Successfully obtained access token")
+
+            # Get user info
+            user_url = f"{self._base_url}/auth/user/"
+            async with self._session.get(user_url, headers=self._headers, ssl=self._ssl_context) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to get user info with status %d: %s", response.status, await response.text())
+                    return False, None, None, None
+                user_data = await response.json()
+                _LOGGER.debug("User info: %s", user_data)
+
+            # Get products info
+            products_url = f"{self._base_url}/customer/products/"
+            async with self._session.get(products_url, headers=self._headers, ssl=self._ssl_context) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to get products info with status %d: %s", response.status, await response.text())
+                    return False, None, None, None
+                products_data = await response.json()
+                _LOGGER.debug("Products info: %s", products_data)
+
+                # Extract device and product IDs from the first product
+                if products_data.get("results") and len(products_data["results"]) > 0:
+                    product = products_data["results"][0]
+                    self._device_id = product.get("id")
+                    self._product_id = str(product.get("related_ao"))
+                    _LOGGER.debug("Found device ID: %s, product ID: %s", self._device_id, self._product_id)
+                else:
+                    _LOGGER.error("No products found in response")
                     return False, None, None, None
 
-                # Store status URL and extract device/product IDs
-                response_url = str(response.url)
-                if "/status/" in response_url:
-                    # Extract device and product IDs from URL like /status/859/A-534/
-                    parts = response_url.strip('/').split('/')
-                    if len(parts) >= 4:
-                        self._device_id = parts[-2]
-                        self._product_id = parts[-1]
-                        _LOGGER.debug("Found device_id: %s, product_id: %s", self._device_id, self._product_id)
-                        return True, self._csrf_token, self._device_id, self._product_id
-                
-                _LOGGER.error("Login succeeded but no status URL found. Response URL: %s", response_url)
-                html = await response.text()
-                _LOGGER.debug("Response content: %s", html[:500])
-                return False, None, None, None
+            return True, self._device_id, self._product_id, self._access_token
 
         except Exception as err:
-            _LOGGER.error("Error during login: %s", err)
+            _LOGGER.error("Error during login: %s", str(err))
+            _LOGGER.error("Error type: %s", type(err).__name__)
+            import traceback
+            _LOGGER.error("Traceback: %s", traceback.format_exc())
             return False, None, None, None
 
     @property
