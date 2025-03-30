@@ -21,6 +21,10 @@ from .models.settings import (
     HeatingPerformanceMode,
     SoundMode,
     PowerLevel,
+    ThermostatDelay,
+    BackupHeatingMode,
+    CoolingThermostatType,
+    CoolingControlMode,
 )
 
 @dataclass
@@ -64,6 +68,30 @@ MODE_SELECTS = {
         name="Sound Fan Speed",
         options_enum=PowerLevel,
         options=[level.value for level in PowerLevel],
+    ),
+    "advanced_thermostat_delay": DeWarmteSelectEntityDescription(
+        key="advanced_thermostat_delay",
+        name="Advanced Thermostat Delay",
+        options_enum=ThermostatDelay,
+        options=[delay.value for delay in ThermostatDelay],
+    ),
+    "backup_heating_mode": DeWarmteSelectEntityDescription(
+        key="backup_heating_mode",
+        name="Backup Heating Mode",
+        options_enum=BackupHeatingMode,
+        options=[mode.value for mode in BackupHeatingMode],
+    ),
+    "cooling_thermostat_type": DeWarmteSelectEntityDescription(
+        key="cooling_thermostat_type",
+        name="Cooling Thermostat Type",
+        options_enum=CoolingThermostatType,
+        options=[type.value for type in CoolingThermostatType],
+    ),
+    "cooling_control_mode": DeWarmteSelectEntityDescription(
+        key="cooling_control_mode",
+        name="Cooling Control Mode",
+        options_enum=CoolingControlMode,
+        options=[mode.value for mode in CoolingControlMode],
     ),
 }
 
@@ -118,6 +146,14 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
             return settings.sound_compressor_power.value
         elif key == "sound_fan_speed":
             return settings.sound_fan_speed.value
+        elif key == "advanced_thermostat_delay":
+            return settings.advanced_thermostat_delay.value
+        elif key == "backup_heating_mode":
+            return settings.backup_heating_mode.value
+        elif key == "cooling_thermostat_type":
+            return settings.cooling_thermostat_type.value
+        elif key == "cooling_control_mode":
+            return settings.cooling_control_mode.value
 
         return None
 
@@ -138,6 +174,14 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
             settings["sound_compressor_power"] = option
         elif key == "sound_fan_speed":
             settings["sound_fan_speed"] = option
+        elif key == "advanced_thermostat_delay":
+            settings["advanced_thermostat_delay"] = option
+        elif key == "backup_heating_mode":
+            settings["backup_heating_mode"] = option
+        elif key == "cooling_thermostat_type":
+            settings["cooling_thermostat_type"] = option
+        elif key == "cooling_control_mode":
+            settings["cooling_control_mode"] = option
 
         if settings:
             await self.coordinator.api.async_update_operation_settings(settings)

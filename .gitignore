@@ -43,5 +43,5 @@ Thumbs.db
 # Local development
 secrets.yaml
 tests/secrets.yaml
-tests/secrets.yaml
-tests/network.har
+*.har
+tests/*.har

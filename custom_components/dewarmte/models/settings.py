@@ -74,6 +74,7 @@ class HeatingPerformanceMode(str, Enum):
     """Heating performance mode settings."""
     AUTO = "auto"
     PUMP_AO_ONLY = "pomp_ao_only"
+    PUMP_AO_AND_BACKUP = "pomp_ao_and_backup"
     BACKUP_ONLY = "backup_only"
 
 class SoundMode(str, Enum):

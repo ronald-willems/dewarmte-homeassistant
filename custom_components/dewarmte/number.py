@@ -80,6 +80,24 @@ TEMPERATURE_NUMBERS = {
         max_value=40.0,
         step=0.5,
     ),
+    "cooling_temperature": DeWarmteNumberEntityDescription(
+        key="cooling_temperature",
+        name="Cooling Temperature",
+        device_class=NumberDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        min_value=5.0,
+        max_value=30.0,
+        step=0.5,
+    ),
+    "cooling_duration": DeWarmteNumberEntityDescription(
+        key="cooling_duration",
+        name="Cooling Duration",
+        device_class=NumberDeviceClass.DURATION,
+        native_unit_of_measurement="minutes",
+        min_value=0.0,
+        max_value=1440.0,  # 24 hours in minutes
+        step=5.0,
+    ),
 }
 
 async def async_setup_entry(
@@ -137,6 +155,10 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
                 return settings.heat_curve.s2_target_temp
         elif key == "heating_performance_backup_temperature":
             return settings.heating_performance_backup_temperature
+        elif key == "cooling_temperature":
+            return settings.cooling_temperature
+        elif key == "cooling_duration":
+            return settings.cooling_duration
 
         return None
 
@@ -159,6 +181,10 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
                 settings["heat_curve_s2_target_temp"] = value
         elif key == "heating_performance_backup_temperature":
             settings["heating_performance_backup_temperature"] = value
+        elif key == "cooling_temperature":
+            settings["cooling_temperature"] = value
+        elif key == "cooling_duration":
+            settings["cooling_duration"] = value
 
         if settings:
             try:
