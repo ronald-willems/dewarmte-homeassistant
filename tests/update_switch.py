@@ -1,92 +1,96 @@
-"""Test script to update a specific switch."""
-import asyncio
-import os
-import sys
+#!/usr/bin/env python3
+"""Script to test the update functionality of api.py."""
 import argparse
+import asyncio
+import sys
+import os
 import yaml
+import aiohttp
+import ssl
 from typing import Any
 
-import aiohttp
-
-# Add parent directory to path so we can import the custom component
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add parent directory to Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from custom_components.dewarmte.api import DeWarmteApiClient
 from custom_components.dewarmte.models.settings import ConnectionSettings
 
-async def get_config() -> dict:
-    """Get test configuration."""
-    config_path = "secrets.yaml"
-    if not os.path.exists(config_path):
-        print(f"Config file not found at {config_path}")
-        return None
-        
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
-        return config["dewarmte"]
-
-async def update_switch(api: DeWarmteApiClient, switch_name: str, new_state: bool) -> None:
-    """Update a switch to the specified state."""
-    print(f"\nUpdating {switch_name}...")
-    
-    # Get current state
-    settings = await api.async_get_basic_settings()
-    if not settings or switch_name not in settings:
-        print(f"Failed to get {switch_name} setting")
-        return
-    
-    current_state = settings[switch_name].state.value
-    print(f"Current {switch_name} state: {current_state}")
-    
-    if current_state == new_state:
-        print(f"{switch_name} is already {'enabled' if new_state else 'disabled'}")
-        return
-    
-    # Set new state
-    print(f"Setting {switch_name} to {new_state}")
-    success = await api.async_update_basic_setting(switch_name, new_state)
-    if success:
-        print(f"Successfully set {switch_name} to {new_state}")
-        
-        # Verify the change
-        settings = await api.async_get_basic_settings()
-        if settings and settings[switch_name].state.value == new_state:
-            print(f"Verified {switch_name} is now {new_state}")
-        else:
-            print(f"Warning: {switch_name} may not have been set correctly")
-    else:
-        print(f"Failed to set {switch_name}")
-
 async def main() -> None:
-    """Run the test script."""
-    parser = argparse.ArgumentParser(description='Update a DeWarmte switch state.')
-    parser.add_argument('switch_name', help='Name of the switch to update')
-    parser.add_argument('--state', type=lambda x: x.lower() == 'true', 
-                      default=True, help='State to set (true/false)')
+    """Run the script."""
+    parser = argparse.ArgumentParser(description="Test the update functionality of api.py")
+    parser.add_argument("entity_id", help="The entity ID to update (e.g., select.dewarmte_heating_performance_mode)")
+    parser.add_argument("new_state", help="The new state to set")
     args = parser.parse_args()
 
-    config = await get_config()
-    if not config:
-        return
+    # Load secrets from secrets.yaml in tests folder
+    secrets_path = os.path.join(os.path.dirname(__file__), "secrets.yaml")
+    if not os.path.exists(secrets_path):
+        print("secrets.yaml not found in tests directory")
+        sys.exit(1)
 
-    async with aiohttp.ClientSession() as session:
-        connection_settings = ConnectionSettings(
-            username=config["username"],
-            password=config["password"]
-        )
-        
-        api = DeWarmteApiClient(
-            connection_settings=connection_settings,
-            session=session
-        )
+    with open(secrets_path) as f:
+        secrets = yaml.safe_load(f)
 
-        print("Logging in...")
+    # Extract credentials from dewarmte section
+    dewarmte_config = secrets.get("dewarmte", {})
+    username = dewarmte_config.get("username")
+    password = dewarmte_config.get("password")
+    if not username or not password:
+        print("dewarmte.username and dewarmte.password must be set in secrets.yaml")
+        sys.exit(1)
+
+    # Parse entity ID to get the setting name
+    # Example: select.dewarmte_heating_performance_mode -> heating_performance_mode
+    if not args.entity_id.startswith(("select.dewarmte_", "number.dewarmte_", "switch.dewarmte_")):
+        print("Invalid entity ID format. Must start with select.dewarmte_, number.dewarmte_, or switch.dewarmte_")
+        sys.exit(1)
+
+    setting_name = args.entity_id.split("_", 1)[1]
+
+    # Create SSL context that doesn't verify certificates
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+
+    # Initialize API client with SSL context
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
+        settings = ConnectionSettings(username=username, password=password)
+        api = DeWarmteApiClient(settings, session)
+
+        # Login
         if not await api.async_login():
-            print("Login failed")
-            return
-        print("Login successful\n")
+            print("Failed to login")
+            sys.exit(1)
 
-        await update_switch(api, args.switch_name, args.state)
+        # Get current settings
+        if not await api.async_get_operation_settings():
+            print("Failed to get current settings")
+            sys.exit(1)
+
+        # Convert value based on entity type
+        if args.entity_id.startswith("number."):
+            try:
+                value = float(args.new_state)
+            except ValueError:
+                print("Value must be a number for number entities")
+                sys.exit(1)
+        elif args.entity_id.startswith("switch."):
+            if args.new_state.lower() not in ["on", "off"]:
+                print("Value must be 'on' or 'off' for switch entities")
+                sys.exit(1)
+            value = args.new_state.lower() == "on"
+        else:  # select
+            value = args.new_state
+
+        # Update the setting
+        try:
+            settings = {setting_name: value}
+            await api.async_update_operation_settings(settings)
+            print(f"Successfully updated {setting_name} to {value}")
+        except Exception as err:
+            print(f"Failed to update setting: {err}")
+            sys.exit(1)
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())
+

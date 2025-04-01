@@ -161,6 +161,49 @@ class DeWarmteApiClient:
                 json=heat_curve_settings,
                 headers=self._auth.headers,
             )
+        elif "heating_performance_mode" in settings:
+            # For heating performance mode, use the dedicated endpoint
+            _LOGGER.debug("Updating heating performance mode with settings: %s", settings)
+            
+            # Get current settings to include backup temperature
+            current_settings = await self.async_get_operation_settings()
+            if not current_settings:
+                raise ValueError("Could not get current settings")
+            
+            # Include backup temperature in the update
+            update_settings = {
+                "heating_performance_mode": settings["heating_performance_mode"],
+                "heating_performance_backup_temperature": current_settings.heating_performance_backup_temperature
+            }
+            
+            async with self._session.post(
+                f"{self._base_url}/customer/products/{self._device.device_id}/settings/heating-performance/",
+                json=update_settings,
+                headers=self._auth.headers,
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to update heating performance mode: %d", response.status)
+                    response_text = await response.text()
+                    _LOGGER.error("Response: %s", response_text)
+                    raise ValueError(f"Failed to update heating performance mode: {response.status}")
+                response_data = await response.json()
+                _LOGGER.debug("Heating performance mode update response: %s", response_data)
+        elif "backup_heating_mode" in settings:
+            # For backup heating mode, use the dedicated backup-heating endpoint
+            _LOGGER.debug("Updating backup heating mode with settings: %s", settings)
+            
+            async with self._session.post(
+                f"{self._base_url}/customer/products/{self._device.device_id}/settings/backup-heating/",
+                json={"backup_heating_mode": settings["backup_heating_mode"]},
+                headers=self._auth.headers,
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to update backup heating mode: %d", response.status)
+                    response_text = await response.text()
+                    _LOGGER.error("Response: %s", response_text)
+                    raise ValueError(f"Failed to update backup heating mode: {response.status}")
+                response_data = await response.json()
+                _LOGGER.debug("Backup heating mode update response: %s", response_data)
         else:
             # For non-heat curve settings, use the regular settings endpoint
             await self._session.post(
