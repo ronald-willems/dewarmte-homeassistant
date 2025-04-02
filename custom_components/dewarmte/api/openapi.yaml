@@ -1,0 +1,589 @@
+openapi: 3.0.0
+info:
+  title: DeWarmte API v2
+  version: '2.0'
+  description: |
+    API for controlling DeWarmte heat pumps.
+    This API requires authentication and uses JWT tokens for authorization.
+
+servers:
+  - url: https://api.mydewarmte.com/v1
+    description: Production server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    deviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: The unique identifier of the device
+
+  headers:
+    defaultHeaders:
+      Accept:
+        schema:
+          type: string
+          default: application/json
+        required: true
+      Accept-Language:
+        schema:
+          type: string
+          default: en-US
+        required: true
+      Accept-Encoding:
+        schema:
+          type: string
+          default: gzip, deflate, br, zstd
+        required: true
+      Content-Type:
+        schema:
+          type: string
+          default: application/json
+        required: true
+      Origin:
+        schema:
+          type: string
+          default: https://mydewarmte.com
+        required: true
+      Referer:
+        schema:
+          type: string
+          default: https://mydewarmte.com/
+        required: true
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+        message:
+          type: string
+          description: Error message
+        detail:
+          type: string
+          description: Detailed error information
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        access:
+          type: string
+          description: JWT access token
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DeviceInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        manufacturer:
+          type: string
+          default: DeWarmte
+        model:
+          type: string
+          default: AO
+        sw_version:
+          type: string
+          default: 1.0.0
+        hw_version:
+          type: string
+          default: 1.0.0
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+        name:
+          type: string
+        online:
+          type: boolean
+        info:
+          $ref: '#/components/schemas/DeviceInfo'
+
+    ProductStatus:
+      type: object
+      properties:
+        water_flow:
+          type: number
+          format: float
+          description: Water flow in L/min
+        supply_temperature:
+          type: number
+          format: float
+          description: Supply temperature in °C
+        outdoor_temperature:
+          type: number
+          format: float
+          description: Outdoor temperature in °C
+        heat_input:
+          type: number
+          format: float
+          description: Heat input in kW
+        actual_temperature:
+          type: number
+          format: float
+          description: Actual temperature in °C
+        electricity_consumption:
+          type: number
+          format: float
+          description: Electricity consumption in kW
+        heat_output:
+          type: number
+          format: float
+          description: Heat output in kW
+        gas_boiler:
+          type: boolean
+          description: Gas boiler state
+        thermostat:
+          type: boolean
+          description: Thermostat state
+        target_temperature:
+          type: number
+          format: float
+          description: Target temperature in °C
+        electric_backup_usage:
+          type: number
+          format: float
+          description: Electric backup usage in kW
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        related_ao:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+
+    ProductsList:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+
+    WarmWaterRange:
+      type: object
+      properties:
+        order:
+          type: integer
+          minimum: 0
+        temperature:
+          type: number
+          format: float
+        period:
+          type: string
+          pattern: "^([0-9]{2}:[0-9]{2})-([0-9]{2}:[0-9]{2})$"
+          example: "00:00-06:00"
+      required:
+        - order
+        - temperature
+        - period
+
+    HeatCurveSettings:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [weather, fixed]
+        heating_kind:
+          type: string
+          enum: [default, custom]
+        s1_outside_temp:
+          type: number
+          format: float
+        s1_target_temp:
+          type: number
+          format: float
+        s2_outside_temp:
+          type: number
+          format: float
+        s2_target_temp:
+          type: number
+          format: float
+        fixed_temperature:
+          type: number
+          format: float
+        use_smart_correction:
+          type: boolean
+      required:
+        - mode
+        - heating_kind
+        - s1_outside_temp
+        - s1_target_temp
+        - s2_outside_temp
+        - s2_target_temp
+        - fixed_temperature
+        - use_smart_correction
+
+    DeviceSettings:
+      type: object
+      properties:
+        advanced_boost_mode_control:
+          type: boolean
+        advanced_thermostat_delay:
+          type: string
+          enum: [min, med, max]
+        backup_heating_mode:
+          type: string
+          enum: [auto, eco, comfort]
+        cooling_thermostat_type:
+          type: string
+          enum: [heating_only, heating_and_cooling]
+        cooling_temperature:
+          type: number
+          format: float
+        cooling_control_mode:
+          type: string
+          enum: [thermostat, manual]
+        cooling_duration:
+          type: integer
+        heat_curve:
+          $ref: '#/components/schemas/HeatCurveSettings'
+        heating_performance_mode:
+          type: string
+          enum: [auto, pomp_ao_only, pomp_ao_and_backup, backup_only]
+        heating_performance_backup_temperature:
+          type: number
+          format: float
+        sound_mode:
+          type: string
+          enum: [normal, silent]
+        sound_compressor_power:
+          type: string
+          enum: [min, med, max]
+        sound_fan_speed:
+          type: string
+          enum: [min, med, max]
+        warm_water_is_scheduled:
+          type: boolean
+        warm_water_ranges:
+          type: array
+          items:
+            $ref: '#/components/schemas/WarmWaterRange'
+        version:
+          type: integer
+        is_applied:
+          type: boolean
+
+paths:
+  /auth/token/:
+    post:
+      summary: Authenticate user and get access token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/user/:
+    get:
+      summary: Get user information
+      operationId: getUserInfo
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /customer/products/:
+    get:
+      summary: Get list of products and their status
+      operationId: getProducts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductsList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /customer/products/tb-status/:
+    get:
+      summary: Get outdoor temperature status
+      operationId: getOutdoorTemperature
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Outdoor temperature data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outdoor_temperature:
+                    type: number
+                    format: float
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /customer/products/{deviceId}/settings/:
+    parameters:
+      - $ref: '#/components/parameters/deviceId'
+    get:
+      summary: Get device settings
+      description: |
+        Get all settings for a specific device. This includes heat curve settings,
+        performance settings, and other configuration options.
+      operationId: getDeviceSettings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Device settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Update device settings
+      description: |
+        Update device settings. Note that some settings require getting current
+        settings first to ensure all required fields are included in the update.
+        For specific setting types, use the dedicated endpoints below.
+      operationId: updateDeviceSettings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceSettings'
+      responses:
+        '200':
+          description: Settings updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customer/products/{deviceId}/settings/heat-curve/:
+    parameters:
+      - $ref: '#/components/parameters/deviceId'
+    post:
+      summary: Update heat curve settings
+      description: |
+        Update heat curve settings. All heat curve settings must be provided
+        together, as they are interdependent.
+      operationId: updateHeatCurveSettings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeatCurveSettings'
+      responses:
+        '200':
+          description: Heat curve settings updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customer/products/{deviceId}/settings/heating-performance/:
+    parameters:
+      - $ref: '#/components/parameters/deviceId'
+    post:
+      summary: Update heating performance settings
+      description: |
+        Update heating performance mode and backup temperature. Both values must
+        be provided together.
+      operationId: updateHeatingPerformanceSettings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                heating_performance_mode:
+                  type: string
+                  enum: [auto, pomp_ao_only, pomp_ao_and_backup, backup_only]
+                heating_performance_backup_temperature:
+                  type: number
+                  format: float
+              required:
+                - heating_performance_mode
+                - heating_performance_backup_temperature
+      responses:
+        '200':
+          description: Heating performance settings updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customer/products/{deviceId}/settings/backup-heating/:
+    parameters:
+      - $ref: '#/components/parameters/deviceId'
+    post:
+      summary: Update backup heating mode
+      operationId: updateBackupHeatingMode
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                backup_heating_mode:
+                  type: string
+                  enum: [auto, eco, comfort]
+              required:
+                - backup_heating_mode
+      responses:
+        '200':
+          description: Backup heating mode updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customer/products/{deviceId}/settings/advanced/:
+    parameters:
+      - $ref: '#/components/parameters/deviceId'
+    post:
+      summary: Update advanced settings
+      description: |
+        Update advanced settings (thermostat delay and boost mode). Both settings
+        must be provided together.
+      operationId: updateAdvancedSettings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                advanced_boost_mode_control:
+                  type: boolean
+                advanced_thermostat_delay:
+                  type: string
+                  enum: [min, med, max]
+              required:
+                - advanced_boost_mode_control
+                - advanced_thermostat_delay
+      responses:
+        '200':
+          description: Advanced settings updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  responses:
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized - invalid or missing authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not found - device or resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error' 

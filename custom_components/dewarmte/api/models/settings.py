@@ -3,9 +3,10 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 from enum import Enum
 
-from homeassistant.const import UnitOfTemperature
-
 from . import BaseModel
+
+# Constants
+UNIT_CELSIUS = "°C"
 
 @dataclass
 class ConnectionSettings(BaseModel):
@@ -40,9 +41,9 @@ class IntegrationSettings(BaseModel):
 
 class ThermostatDelay(str, Enum):
     """Thermostat delay settings."""
-    LOW = "low"
-    MEDIUM = "med"
-    HIGH = "high"
+    MIN = "min"
+    MED = "med"
+    MAX = "max"
 
 class BackupHeatingMode(str, Enum):
     """Backup heating mode settings."""

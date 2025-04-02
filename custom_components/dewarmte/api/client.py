@@ -204,6 +204,36 @@ class DeWarmteApiClient:
                     raise ValueError(f"Failed to update backup heating mode: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("Backup heating mode update response: %s", response_data)
+        elif any(key in settings for key in ["advanced_boost_mode_control", "advanced_thermostat_delay"]):
+            # For advanced settings (thermostat delay and boost mode), use the advanced endpoint
+            _LOGGER.debug("Updating advanced settings with: %s", settings)
+            
+            # Get current settings to include any missing values
+            current_settings = await self.async_get_operation_settings()
+            if not current_settings:
+                raise ValueError("Could not get current settings")
+            
+            # Prepare update settings with current values
+            update_settings = {
+                "advanced_boost_mode_control": current_settings.advanced_boost_mode_control,
+                "advanced_thermostat_delay": current_settings.advanced_thermostat_delay,
+            }
+            
+            # Update with new values
+            update_settings.update(settings)
+            
+            async with self._session.post(
+                f"{self._base_url}/customer/products/{self._device.device_id}/settings/advanced/",
+                json=update_settings,
+                headers=self._auth.headers,
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to update advanced settings: %d", response.status)
+                    response_text = await response.text()
+                    _LOGGER.error("Response: %s", response_text)
+                    raise ValueError(f"Failed to update advanced settings: {response.status}")
+                response_data = await response.json()
+                _LOGGER.debug("Advanced settings update response: %s", response_data)
         else:
             # For non-heat curve settings, use the regular settings endpoint
             await self._session.post(

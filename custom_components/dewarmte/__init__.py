@@ -27,11 +27,8 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
-from .api import DeWarmteApiClient
+from .api import DeWarmteApiClient, ConnectionSettings, Device, DeviceSensor
 from .const import DOMAIN
-from .models.device import Device
-from .models.sensor import DeviceSensor
-from .models.settings import ConnectionSettings
 
 _LOGGER = logging.getLogger(__name__)
 

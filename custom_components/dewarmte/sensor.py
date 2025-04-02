@@ -27,8 +27,8 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from . import DeWarmteDataUpdateCoordinator
+from .api import SENSOR_DEFINITIONS
 from .const import DOMAIN
-from .models.sensor import SENSOR_DEFINITIONS
 
 @dataclass
 class DeWarmteSensorEntityDescription(SensorEntityDescription):

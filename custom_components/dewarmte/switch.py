@@ -12,8 +12,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
+from .api import DeviceSensor
 from .const import DOMAIN
-from .models.sensor import DeviceSensor
 
 _LOGGER = logging.getLogger(__name__)
 
