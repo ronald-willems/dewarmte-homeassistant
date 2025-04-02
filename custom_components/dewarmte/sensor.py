@@ -1,104 +1,58 @@
 """Support for DeWarmte sensors."""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
-
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorEntityDescription,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfTemperature,
-    UnitOfEnergy,
-    UnitOfPower,
-    UnitOfVolumeFlowRate,
-)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
-from .api import SENSOR_DEFINITIONS
+from .api.models.sensor import SENSOR_DEFINITIONS
 from .const import DOMAIN
-
-@dataclass
-class DeWarmteSensorEntityDescription(SensorEntityDescription):
-    """Class describing DeWarmte sensor entities."""
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the DeWarmte sensors from config entry."""
+    """Set up the DeWarmte sensors."""
     coordinator: DeWarmteDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Create sensor entities from sensor definitions
-    sensors = [
-        DeWarmteSensorEntityDescription(
-            key=key,
-            name=definition.name,
-            native_unit_of_measurement=definition.unit,
-            device_class=definition.device_class,
-            state_class=definition.state_class,
-            options=["Off", "On"] if definition.device_class == SensorDeviceClass.ENUM else None,
-        )
-        for key, definition in SENSOR_DEFINITIONS.items()
-    ]
+    # Create a sensor entity for each defined sensor
+    entities = []
+    for sensor_def in SENSOR_DEFINITIONS.values():
+        if sensor_def.key in coordinator.data:
+            entities.append(
+                DeWarmteSensor(
+                    coordinator=coordinator,
+                    sensor_def=sensor_def,
+                )
+            )
 
-    async_add_entities(
-        DeWarmteSensor(coordinator, description)
-        for description in sensors
-    )
+    async_add_entities(entities)
 
-class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEntity):
+class DeWarmteSensor(CoordinatorEntity, SensorEntity):
     """Representation of a DeWarmte sensor."""
-
-    entity_description: DeWarmteSensorEntityDescription
 
     def __init__(
         self,
         coordinator: DeWarmteDataUpdateCoordinator,
-        description: DeWarmteSensorEntityDescription,
+        sensor_def: dict,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self.entity_description = description
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
+        self._sensor_def = sensor_def
+        self._attr_unique_id = f"{coordinator.device.device_id}_{sensor_def.key}"
+        self._attr_name = sensor_def.name
+        self._attr_native_unit_of_measurement = sensor_def.unit
+        self._attr_device_class = sensor_def.device_class
+        self._attr_state_class = sensor_def.state_class
         self._attr_device_info = coordinator.device_info
 
     @property
-    def native_value(self) -> StateType:
+    def native_value(self):
         """Return the state of the sensor."""
-        if not self.coordinator.data:
-            return None
-            
-        sensor = self.coordinator.data.get(self.entity_description.key)
-        if not sensor:
-            return None
-            
-        value = sensor.value
-        
-        # Convert boolean states to On/Off
-        if self.entity_description.device_class == SensorDeviceClass.ENUM:
-            return "On" if value else "Off"
-            
-        return value
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return (
-            super().available
-            and self.coordinator.data is not None
-            and self.entity_description.key in self.coordinator.data
-        ) 
+        if self.coordinator.data and self._sensor_def.key in self.coordinator.data:
+            return self.coordinator.data[self._sensor_def.key].value
+        return None 

@@ -9,6 +9,7 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     UnitOfTemperature,
     UnitOfPower,
+    UnitOfVolume,
     UnitOfVolumeFlowRate,
 )
 
@@ -39,10 +40,10 @@ SENSOR_DEFINITIONS: Dict[str, SensorDefinition] = {
         key="water_flow",
         name="Water Flow",
         var_name="water_flow",
-        device_class=SensorDeviceClass.WATER,
-        state_class=SensorStateClass.MEASUREMENT,
-        unit=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
-        convert_func=float
+        device_class=SensorDeviceClass.VOLUME,
+        state_class=SensorStateClass.TOTAL,
+        unit=UnitOfVolume.LITERS,
+        convert_func=lambda x: float(x) * 60.0
     ),
     "supply_temperature": SensorDefinition(
         key="supply_temperature",

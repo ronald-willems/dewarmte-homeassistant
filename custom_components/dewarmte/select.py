@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
-from .models.settings import (
+from .api.models.settings import (
     HeatCurveMode,
     HeatingKind,
     HeatingPerformanceMode,
@@ -121,7 +121,7 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
         """Initialize the select entity."""
         super().__init__(coordinator)
         self.entity_description = description
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
+        self._attr_unique_id = f"{coordinator.device.device_id}_{description.key}"
         self._attr_device_info = coordinator.device_info
         self._attr_options = description.options
 

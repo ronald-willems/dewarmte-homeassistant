@@ -12,7 +12,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
-from .api import DeviceSensor
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,48 +23,12 @@ class DeWarmteSwitchEntityDescription(SwitchEntityDescription):
     translation_key: str = None
 
 SWITCH_DESCRIPTIONS = {
-    "default_heating": DeWarmteSwitchEntityDescription(
-        key="default_heating",
-        name="Default Heating",
-        icon="mdi:radiator",
-        translation_key="default_heating"
+    "boost_mode": DeWarmteSwitchEntityDescription(
+        key="boost_mode",
+        name="Boost Mode",
+        icon="mdi:rocket-launch",
+        translation_key="boost_mode"
     ),
-    "force_backup_only": DeWarmteSwitchEntityDescription(
-        key="force_backup_only",
-        name="Force Backup Only",
-        icon="mdi:hvac",
-        translation_key="force_backup_only"
-    ),
-    "force_ao_only": DeWarmteSwitchEntityDescription(
-        key="force_ao_only",
-        name="Force Heat Pump Only",
-        icon="mdi:heat-pump",
-        translation_key="force_ao_only"
-    ),
-    "backup_eco_mode": DeWarmteSwitchEntityDescription(
-        key="backup_eco_mode",
-        name="Backup Eco Mode",
-        icon="mdi:leaf",
-        translation_key="backup_eco_mode"
-    ),
-    "backup_default_mode": DeWarmteSwitchEntityDescription(
-        key="backup_default_mode",
-        name="Backup Default Mode",
-        icon="mdi:tune",
-        translation_key="backup_default_mode"
-    ),
-    "backup_comfort_mode": DeWarmteSwitchEntityDescription(
-        key="backup_comfort_mode",
-        name="Backup Comfort Mode",
-        icon="mdi:sofa",
-        translation_key="backup_comfort_mode"
-    ),
-    "silent_mode": DeWarmteSwitchEntityDescription(
-        key="silent_mode",
-        name="Silent Mode",
-        icon="mdi:volume-off",
-        translation_key="silent_mode"
-    )
 }
 
 async def async_setup_entry(
@@ -76,19 +39,14 @@ async def async_setup_entry(
     """Set up the DeWarmte switch platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     
-    # Get current settings to create switches
-    settings = await coordinator.api.async_get_basic_settings()
-    
-    switches = []
-    for setting_id, sensor in settings.items():
-        if setting_id in SWITCH_DESCRIPTIONS:
-            switches.append(
-                DeWarmteSwitch(
-                    coordinator,
-                    setting_id,
-                    SWITCH_DESCRIPTIONS[setting_id]
-                )
-            )
+    # Create boost mode switch
+    switches = [
+        DeWarmteSwitch(
+            coordinator=coordinator,
+            setting_id="boost_mode",
+            description=SWITCH_DESCRIPTIONS["boost_mode"]
+        )
+    ]
     
     async_add_entities(switches, True)
 
@@ -107,7 +65,7 @@ class DeWarmteSwitch(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEnt
         super().__init__(coordinator)
         self._setting_id = setting_id
         self.entity_description = description
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{setting_id}"
+        self._attr_unique_id = f"{coordinator.device.device_id}_{setting_id}"
         self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_device_info = coordinator.device_info
@@ -116,42 +74,47 @@ class DeWarmteSwitch(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEnt
     def available(self) -> bool:
         """Return if entity is available."""
         return (
-            self.coordinator.last_update_success
-            and self.coordinator.data is not None
-            and self._setting_id in self.coordinator.data
+            self.coordinator.last_update_success and
+            self.coordinator.api.operation_settings is not None
         )
 
     @property
     def is_on(self) -> bool | None:
         """Return true if the switch is on."""
-        if not self.coordinator.data or self._setting_id not in self.coordinator.data:
+        if not self.coordinator.api.operation_settings:
             return None
-        return self.coordinator.data[self._setting_id].value
+            
+        if self._setting_id == "boost_mode":
+            return self.coordinator.api.operation_settings.advanced_boost_mode_control
+            
+        return None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        try:
-            success = await self.coordinator.api.async_update_basic_setting(self._setting_id, True)
-            if success:
-                # Update coordinator data
-                if self._setting_id in self.coordinator.data:
-                    self.coordinator.data[self._setting_id].value = True
-                self.async_write_ha_state()
-            else:
-                _LOGGER.error("Failed to turn on %s", self._setting_id)
-        except Exception as err:
-            _LOGGER.error("Error turning on %s: %s", self._setting_id, err)
+        if self._setting_id == "boost_mode":
+            try:
+                # When turning on boost mode, we need to provide both boost mode and current thermostat delay
+                current_settings = self.coordinator.api.operation_settings
+                if current_settings:
+                    await self.coordinator.api.async_update_operation_settings({
+                        "advanced_boost_mode_control": True,
+                        "advanced_thermostat_delay": current_settings.advanced_thermostat_delay
+                    })
+                    await self.coordinator.async_request_refresh()
+            except Exception as err:
+                _LOGGER.error("Failed to turn on boost mode: %s", err)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        try:
-            success = await self.coordinator.api.async_update_basic_setting(self._setting_id, False)
-            if success:
-                # Update coordinator data
-                if self._setting_id in self.coordinator.data:
-                    self.coordinator.data[self._setting_id].value = False
-                self.async_write_ha_state()
-            else:
-                _LOGGER.error("Failed to turn off %s", self._setting_id)
-        except Exception as err:
-            _LOGGER.error("Error turning off %s: %s", self._setting_id, err) 
+        if self._setting_id == "boost_mode":
+            try:
+                # When turning off boost mode, we need to provide both boost mode and current thermostat delay
+                current_settings = self.coordinator.api.operation_settings
+                if current_settings:
+                    await self.coordinator.api.async_update_operation_settings({
+                        "advanced_boost_mode_control": False,
+                        "advanced_thermostat_delay": current_settings.advanced_thermostat_delay
+                    })
+                    await self.coordinator.async_request_refresh()
+            except Exception as err:
+                _LOGGER.error("Failed to turn off boost mode: %s", err) 

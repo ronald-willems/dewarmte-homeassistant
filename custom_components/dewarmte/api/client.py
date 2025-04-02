@@ -1,4 +1,4 @@
-"""API client for DeWarmte v2."""
+"""API client for DeWarmte v1."""
 from __future__ import annotations
 
 import logging
@@ -14,7 +14,7 @@ from .auth import DeWarmteAuth
 _LOGGER = logging.getLogger(__name__)
 
 class DeWarmteApiClient:
-    """API client for DeWarmte v2."""
+    """API client for DeWarmte v1."""
 
     def __init__(self, connection_settings: ConnectionSettings, session: aiohttp.ClientSession) -> None:
         """Initialize the API client."""

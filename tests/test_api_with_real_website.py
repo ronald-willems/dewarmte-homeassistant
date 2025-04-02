@@ -1,4 +1,4 @@
-"""Test the DeWarmte API v2 against a real website."""
+"""Test the DeWarmte API v1 against a real website."""
 import os
 import sys
 import asyncio
@@ -27,8 +27,8 @@ from custom_components.dewarmte.api import (
 )
 
 async def main():
-    """Test the DeWarmte API v2 with real credentials."""
-    print("\n=== Testing DeWarmte API v2 with real credentials ===\n")
+    """Test the DeWarmte API v1 with real credentials."""
+    print("\n=== Testing DeWarmte API v1 with real credentials ===\n")
 
     # Load secrets from secrets.yaml
     with open("tests/secrets.yaml", "r") as f:

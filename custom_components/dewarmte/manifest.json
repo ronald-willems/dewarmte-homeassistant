@@ -1,12 +1,14 @@
 {
   "domain": "dewarmte",
   "name": "DeWarmte",
-  "codeowners": ["@ronaldw"],
   "config_flow": true,
-  "dependencies": [],
   "documentation": "https://github.com/ronald-willems/dewarmte-homeassistant",
-  "homekit": {},
-  "iot_class": "cloud_polling",
   "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": ["@yourusername"],
+  "iot_class": "cloud_polling",
   "version": "1.0.0"
 } 

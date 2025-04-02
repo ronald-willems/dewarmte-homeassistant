@@ -27,7 +27,10 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
-from .api import DeWarmteApiClient, ConnectionSettings, Device, DeviceSensor
+from .api.client import DeWarmteApiClient
+from .api.models.settings import ConnectionSettings
+from .api.models.device import Device
+from .api.models.sensor import DeviceSensor
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +39,7 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.NUMBER,
     Platform.SELECT,
+    Platform.SWITCH,
 ]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
