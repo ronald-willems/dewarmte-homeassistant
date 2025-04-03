@@ -26,7 +26,7 @@ TEMPERATURE_NUMBERS = {
         key="heat_curve_s1_outside_temp",
         name="Heat Curve S1 Outside Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=-20.0,
+        native_min_value=-10.0,
         native_max_value=15.0,
         native_step=1,
     ),

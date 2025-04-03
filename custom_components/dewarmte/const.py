@@ -102,7 +102,7 @@ SENSOR_UNITS = {
 }
 
 # API endpoints
-API_BASE_URL = "https://api.dewarmte.nl/v1"
+API_BASE_URL = "https://api.mydewarmte.com/v1"
 API_LOGIN_ENDPOINT = "/auth/login"
 API_DEVICE_ENDPOINT = "/devices"
 API_SETTINGS_ENDPOINT = "/settings"

@@ -3,12 +3,13 @@
   "name": "DeWarmte",
   "config_flow": true,
   "documentation": "https://github.com/ronald-willems/dewarmte-homeassistant",
+  "issue_tracker": "https://github.com/ronald-willems/dewarmte-homeassistant/issues",
   "requirements": [],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},
   "dependencies": [],
-  "codeowners": ["@yourusername"],
+  "codeowners": ["@ronald-willems"],
   "iot_class": "cloud_polling",
   "version": "1.0.0"
 } 

@@ -1,4 +1,5 @@
 """Simple DeWarmte API client."""
+"""This is a new client that is the base of a future refactoring. it is not yet used."""
 from __future__ import annotations
 
 import logging
