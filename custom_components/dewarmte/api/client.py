@@ -54,6 +54,7 @@ class DeWarmteApiClient:
         try:
             # Get main status data
             products_url = f"{self._base_url}/customer/products/"
+            _LOGGER.debug("Making GET request to %s", products_url)
             async with self._session.get(products_url, headers=self._auth.headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to get status data: %d", response.status)
@@ -69,6 +70,7 @@ class DeWarmteApiClient:
                         
                         # Get outdoor temperature from tb-status endpoint
                         tb_status_url = f"{self._base_url}/customer/products/tb-status/"
+                        _LOGGER.debug("Making GET request to %s", tb_status_url)
                         async with self._session.get(tb_status_url, headers=self._auth.headers) as tb_response:
                             if tb_response.status == 200:
                                 tb_data = await tb_response.json()
@@ -114,6 +116,7 @@ class DeWarmteApiClient:
 
         try:
             settings_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/"
+            _LOGGER.debug("Making GET request to %s", settings_url)
             async with self._session.get(settings_url, headers=self._auth.headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to get operation settings: %d", response.status)
@@ -156,8 +159,10 @@ class DeWarmteApiClient:
             heat_curve_settings.update(settings)
 
             # Send all heat curve settings at once
+            heat_curve_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/heat-curve/"
+            _LOGGER.debug("Making POST request to %s with data: %s", heat_curve_url, heat_curve_settings)
             await self._session.post(
-                f"{self._base_url}/customer/products/{self._device.device_id}/settings/heat-curve/",
+                heat_curve_url,
                 json=heat_curve_settings,
                 headers=self._auth.headers,
             )
@@ -176,8 +181,10 @@ class DeWarmteApiClient:
                 "heating_performance_backup_temperature": current_settings.heating_performance_backup_temperature
             }
             
+            heating_performance_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/heating-performance/"
+            _LOGGER.debug("Making POST request to %s with data: %s", heating_performance_url, update_settings)
             async with self._session.post(
-                f"{self._base_url}/customer/products/{self._device.device_id}/settings/heating-performance/",
+                heating_performance_url,
                 json=update_settings,
                 headers=self._auth.headers,
             ) as response:
@@ -192,9 +199,12 @@ class DeWarmteApiClient:
             # For backup heating mode, use the dedicated backup-heating endpoint
             _LOGGER.debug("Updating backup heating mode with settings: %s", settings)
             
+            backup_heating_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/backup-heating/"
+            request_data = {"backup_heating_mode": settings["backup_heating_mode"]}
+            _LOGGER.debug("Making POST request to %s with data: %s", backup_heating_url, request_data)
             async with self._session.post(
-                f"{self._base_url}/customer/products/{self._device.device_id}/settings/backup-heating/",
-                json={"backup_heating_mode": settings["backup_heating_mode"]},
+                backup_heating_url,
+                json=request_data,
                 headers=self._auth.headers,
             ) as response:
                 if response.status != 200:
@@ -222,8 +232,10 @@ class DeWarmteApiClient:
             # Update with new values
             update_settings.update(settings)
             
+            advanced_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/advanced/"
+            _LOGGER.debug("Making POST request to %s with data: %s", advanced_url, update_settings)
             async with self._session.post(
-                f"{self._base_url}/customer/products/{self._device.device_id}/settings/advanced/",
+                advanced_url,
                 json=update_settings,
                 headers=self._auth.headers,
             ) as response:
@@ -236,8 +248,10 @@ class DeWarmteApiClient:
                 _LOGGER.debug("Advanced settings update response: %s", response_data)
         else:
             # For non-heat curve settings, use the regular settings endpoint
+            settings_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/"
+            _LOGGER.debug("Making POST request to %s with data: %s", settings_url, settings)
             await self._session.post(
-                f"{self._base_url}/customer/products/{self._device.device_id}/settings/",
+                settings_url,
                 json=settings,
                 headers=self._auth.headers,
             )

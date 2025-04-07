@@ -1,95 +1,98 @@
 #!/usr/bin/env python3
 """Script to test the update functionality of api.py."""
+"""With this script, you can update the state of a switch or select entity."""
 import argparse
 import asyncio
 import sys
 import os
-import yaml
-import aiohttp
-import ssl
 from typing import Any
 
-# Add parent directory to Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Add the custom_components directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from custom_components.dewarmte.api import DeWarmteApiClient
-from custom_components.dewarmte.models.settings import ConnectionSettings
+from custom_components.dewarmte.select import MODE_SELECTS
+from custom_components.dewarmte.switch import SWITCH_DESCRIPTIONS
+from test_base import TestBase
+
+# Mapping of entity settings to API settings
+# This is needed because some entity IDs in Home Assistant don't match the API parameter names
+# For example, we use 'boost_mode' in Home Assistant but 'advanced_boost_mode_control' in the API
+# Note: Select entities don't need mapping as their IDs match the API parameter names exactly
+SETTINGS_MAPPING = {
+    "boost_mode": "advanced_boost_mode_control",
+}
 
 async def main() -> None:
     """Run the script."""
     parser = argparse.ArgumentParser(description="Test the update functionality of api.py")
-    parser.add_argument("entity_id", help="The entity ID to update (e.g., select.dewarmte_heating_performance_mode)")
-    parser.add_argument("new_state", help="The new state to set")
+    parser.add_argument("entity_id", help="The entity ID to update (e.g., select.dewarmte_sound_mode)")
+    parser.add_argument("new_state", help="The new state to set (on/off for switches, option for selects)")
     args = parser.parse_args()
 
-    # Load secrets from secrets.yaml in tests folder
-    secrets_path = os.path.join(os.path.dirname(__file__), "secrets.yaml")
-    if not os.path.exists(secrets_path):
-        print("secrets.yaml not found in tests directory")
-        sys.exit(1)
-
-    with open(secrets_path) as f:
-        secrets = yaml.safe_load(f)
-
-    # Extract credentials from dewarmte section
-    dewarmte_config = secrets.get("dewarmte", {})
-    username = dewarmte_config.get("username")
-    password = dewarmte_config.get("password")
-    if not username or not password:
-        print("dewarmte.username and dewarmte.password must be set in secrets.yaml")
-        sys.exit(1)
-
     # Parse entity ID to get the setting name
-    # Example: select.dewarmte_heating_performance_mode -> heating_performance_mode
-    if not args.entity_id.startswith(("select.dewarmte_", "number.dewarmte_", "switch.dewarmte_")):
-        print("Invalid entity ID format. Must start with select.dewarmte_, number.dewarmte_, or switch.dewarmte_")
+    if not args.entity_id.startswith(("select.dewarmte_", "switch.dewarmte_")):
+        print("Invalid entity ID format. Must start with select.dewarmte_ or switch.dewarmte_")
         sys.exit(1)
 
+    entity_type = args.entity_id.split(".")[0]
     setting_name = args.entity_id.split("_", 1)[1]
+    
+    # Map setting name to API setting name if needed
+    api_setting_name = SETTINGS_MAPPING.get(setting_name, setting_name)
 
-    # Create SSL context that doesn't verify certificates
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
+    try:
+        async with TestBase() as test:
+            # Get current settings
+            current_settings = await test.api.async_get_operation_settings()
+            if not current_settings:
+                print("Failed to get current settings")
+                sys.exit(1)
 
-    # Initialize API client with SSL context
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
-        settings = ConnectionSettings(username=username, password=password)
-        api = DeWarmteApiClient(settings, session)
+            # Convert value based on entity type
+            if entity_type == "switch":
+                if setting_name not in SWITCH_DESCRIPTIONS:
+                    print(f"Invalid switch entity: {setting_name}")
+                    print(f"Available switch entities: {', '.join(SWITCH_DESCRIPTIONS.keys())}")
+                    sys.exit(1)
 
-        # Login
-        if not await api.async_login():
-            print("Failed to login")
-            sys.exit(1)
+                if args.new_state.lower() not in ["on", "off"]:
+                    print("Value must be 'on' or 'off' for switch entities")
+                    sys.exit(1)
+                value = args.new_state.lower() == "on"
+                
+                # For boost mode, we need to include the current thermostat delay
+                if setting_name == "boost_mode":
+                    settings = {
+                        api_setting_name: value,
+                        "advanced_thermostat_delay": current_settings.advanced_thermostat_delay
+                    }
+                else:
+                    settings = {api_setting_name: value}
+            else:  # select
+                if setting_name not in MODE_SELECTS:
+                    print(f"Invalid select entity: {setting_name}")
+                    print(f"Available select entities: {', '.join(MODE_SELECTS.keys())}")
+                    sys.exit(1)
+                
+                valid_options = MODE_SELECTS[setting_name].options
+                if args.new_state not in valid_options:
+                    print(f"Invalid option for {setting_name}")
+                    print(f"Available options: {', '.join(valid_options)}")
+                    sys.exit(1)
+                
+                settings = {api_setting_name: args.new_state}
 
-        # Get current settings
-        if not await api.async_get_operation_settings():
-            print("Failed to get current settings")
-            sys.exit(1)
-
-        # Convert value based on entity type
-        if args.entity_id.startswith("number."):
+            # Update the setting
             try:
-                value = float(args.new_state)
-            except ValueError:
-                print("Value must be a number for number entities")
+                await test.api.async_update_operation_settings(settings)
+                print(f"Successfully updated {setting_name} to {args.new_state}")
+            except Exception as err:
+                print(f"Failed to update setting: {err}")
                 sys.exit(1)
-        elif args.entity_id.startswith("switch."):
-            if args.new_state.lower() not in ["on", "off"]:
-                print("Value must be 'on' or 'off' for switch entities")
-                sys.exit(1)
-            value = args.new_state.lower() == "on"
-        else:  # select
-            value = args.new_state
 
-        # Update the setting
-        try:
-            settings = {setting_name: value}
-            await api.async_update_operation_settings(settings)
-            print(f"Successfully updated {setting_name} to {value}")
-        except Exception as err:
-            print(f"Failed to update setting: {err}")
-            sys.exit(1)
+    except Exception as err:
+        print(f"Error: {err}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     asyncio.run(main())

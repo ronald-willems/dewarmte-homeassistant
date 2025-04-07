@@ -23,11 +23,11 @@ class DeWarmteSwitchEntityDescription(SwitchEntityDescription):
     translation_key: str = None
 
 SWITCH_DESCRIPTIONS = {
-    "boost_mode": DeWarmteSwitchEntityDescription(
-        key="boost_mode",
-        name="Boost Mode",
+    "advanced_boost_mode_control": DeWarmteSwitchEntityDescription(
+        key="advanced_boost_mode_control",
+        name="Advanced Boost Mode Control",
         icon="mdi:rocket-launch",
-        translation_key="boost_mode"
+        translation_key="advanced_boost_mode_control"
     ),
 }
 
@@ -43,8 +43,8 @@ async def async_setup_entry(
     switches = [
         DeWarmteSwitch(
             coordinator=coordinator,
-            setting_id="boost_mode",
-            description=SWITCH_DESCRIPTIONS["boost_mode"]
+            setting_id="advanced_boost_mode_control",
+            description=SWITCH_DESCRIPTIONS["advanced_boost_mode_control"]
         )
     ]
     
@@ -84,37 +84,32 @@ class DeWarmteSwitch(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEnt
         if not self.coordinator.api.operation_settings:
             return None
             
-        if self._setting_id == "boost_mode":
-            return self.coordinator.api.operation_settings.advanced_boost_mode_control
-            
-        return None
+        return self.coordinator.api.operation_settings.advanced_boost_mode_control
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        if self._setting_id == "boost_mode":
-            try:
-                # When turning on boost mode, we need to provide both boost mode and current thermostat delay
-                current_settings = self.coordinator.api.operation_settings
-                if current_settings:
-                    await self.coordinator.api.async_update_operation_settings({
-                        "advanced_boost_mode_control": True,
-                        "advanced_thermostat_delay": current_settings.advanced_thermostat_delay
-                    })
-                    await self.coordinator.async_request_refresh()
-            except Exception as err:
-                _LOGGER.error("Failed to turn on boost mode: %s", err)
+        try:
+            # When turning on boost mode, we need to provide both boost mode and current thermostat delay
+            current_settings = self.coordinator.api.operation_settings
+            if current_settings:
+                await self.coordinator.api.async_update_operation_settings({
+                    "advanced_boost_mode_control": True,
+                    "advanced_thermostat_delay": current_settings.advanced_thermostat_delay
+                })
+                await self.coordinator.async_request_refresh()
+        except Exception as err:
+            _LOGGER.error("Failed to turn on boost mode: %s", err)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        if self._setting_id == "boost_mode":
-            try:
-                # When turning off boost mode, we need to provide both boost mode and current thermostat delay
-                current_settings = self.coordinator.api.operation_settings
-                if current_settings:
-                    await self.coordinator.api.async_update_operation_settings({
-                        "advanced_boost_mode_control": False,
-                        "advanced_thermostat_delay": current_settings.advanced_thermostat_delay
-                    })
-                    await self.coordinator.async_request_refresh()
-            except Exception as err:
-                _LOGGER.error("Failed to turn off boost mode: %s", err) 
+        try:
+            # When turning off boost mode, we need to provide both boost mode and current thermostat delay
+            current_settings = self.coordinator.api.operation_settings
+            if current_settings:
+                await self.coordinator.api.async_update_operation_settings({
+                    "advanced_boost_mode_control": False,
+                    "advanced_thermostat_delay": current_settings.advanced_thermostat_delay
+                })
+                await self.coordinator.async_request_refresh()
+        except Exception as err:
+            _LOGGER.error("Failed to turn off boost mode: %s", err) 
