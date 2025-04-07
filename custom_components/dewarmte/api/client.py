@@ -198,13 +198,11 @@ class DeWarmteApiClient:
         elif "backup_heating_mode" in settings:
             # For backup heating mode, use the dedicated backup-heating endpoint
             _LOGGER.debug("Updating backup heating mode with settings: %s", settings)
-            
             backup_heating_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/backup-heating/"
-            request_data = {"backup_heating_mode": settings["backup_heating_mode"]}
-            _LOGGER.debug("Making POST request to %s with data: %s", backup_heating_url, request_data)
+            _LOGGER.debug("Making POST request to %s with data: %s", backup_heating_url, settings)
             async with self._session.post(
                 backup_heating_url,
-                json=request_data,
+                json=settings,
                 headers=self._auth.headers,
             ) as response:
                 if response.status != 200:
@@ -214,6 +212,38 @@ class DeWarmteApiClient:
                     raise ValueError(f"Failed to update backup heating mode: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("Backup heating mode update response: %s", response_data)
+        elif any(key in ["sound_mode", "sound_compressor_power", "sound_fan_speed"] for key in settings.keys()):
+            # For sound settings, use the dedicated sound endpoint
+            _LOGGER.debug("Updating sound settings with: %s", settings)
+            
+            # Get current settings to include all sound settings
+            current_settings = await self.async_get_operation_settings()
+            if not current_settings:
+                raise ValueError("Could not get current settings")
+            
+            # Include all sound settings in the update
+            update_settings = {
+                "sound_mode": current_settings.sound_mode.value,
+                "sound_compressor_power": current_settings.sound_compressor_power.value,
+                "sound_fan_speed": current_settings.sound_fan_speed.value,
+            }
+            # Update with new values
+            update_settings.update(settings)
+            
+            sound_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/sound/"
+            _LOGGER.debug("Making POST request to %s with data: %s", sound_url, update_settings)
+            async with self._session.post(
+                sound_url,
+                json=update_settings,
+                headers=self._auth.headers,
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to update sound settings: %d", response.status)
+                    response_text = await response.text()
+                    _LOGGER.error("Response: %s", response_text)
+                    raise ValueError(f"Failed to update sound settings: {response.status}")
+                response_data = await response.json()
+                _LOGGER.debug("Sound settings update response: %s", response_data)
         elif any(key in settings for key in ["advanced_boost_mode_control", "advanced_thermostat_delay"]):
             # For advanced settings (thermostat delay and boost mode), use the advanced endpoint
             _LOGGER.debug("Updating advanced settings with: %s", settings)
@@ -247,14 +277,22 @@ class DeWarmteApiClient:
                 response_data = await response.json()
                 _LOGGER.debug("Advanced settings update response: %s", response_data)
         else:
-            # For non-heat curve settings, use the regular settings endpoint
+            # For all other settings, use the regular settings endpoint
+            _LOGGER.debug("Updating regular settings with: %s", settings)
             settings_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/"
             _LOGGER.debug("Making POST request to %s with data: %s", settings_url, settings)
-            await self._session.post(
+            async with self._session.post(
                 settings_url,
                 json=settings,
                 headers=self._auth.headers,
-            )
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to update settings: %d", response.status)
+                    response_text = await response.text()
+                    _LOGGER.error("Response: %s", response_text)
+                    raise ValueError(f"Failed to update settings: {response.status}")
+                response_data = await response.json()
+                _LOGGER.debug("Settings update response: %s", response_data)
 
         # Refresh settings after update
         await self.async_get_operation_settings() 

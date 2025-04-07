@@ -162,26 +162,19 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
         key = self.entity_description.key
         settings = {}
 
-        if key == "heat_curve_mode":
-            settings["heat_curve_mode"] = option
-        elif key == "heating_kind":
-            settings["heating_kind"] = option
-        elif key == "heating_performance_mode":
-            settings["heating_performance_mode"] = option
-        elif key == "sound_mode":
-            settings["sound_mode"] = option
-        elif key == "sound_compressor_power":
-            settings["sound_compressor_power"] = option
-        elif key == "sound_fan_speed":
-            settings["sound_fan_speed"] = option
-        elif key == "advanced_thermostat_delay":
-            settings["advanced_thermostat_delay"] = option
-        elif key == "backup_heating_mode":
-            settings["backup_heating_mode"] = option
-        elif key == "cooling_thermostat_type":
-            settings["cooling_thermostat_type"] = option
-        elif key == "cooling_control_mode":
-            settings["cooling_control_mode"] = option
+        # For sound settings, we need to include all three settings
+        if key in ["sound_mode", "sound_compressor_power", "sound_fan_speed"]:
+            current_settings = self.coordinator.api.operation_settings
+            if current_settings:
+                settings = {
+                    "sound_mode": current_settings.sound_mode.value,
+                    "sound_compressor_power": current_settings.sound_compressor_power.value,
+                    "sound_fan_speed": current_settings.sound_fan_speed.value,
+                }
+                # Update the specific setting that was changed
+                settings[key] = option
+        else:
+            settings[key] = option
 
         if settings:
             await self.coordinator.api.async_update_operation_settings(settings)
