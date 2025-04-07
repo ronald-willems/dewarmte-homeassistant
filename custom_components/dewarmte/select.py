@@ -134,28 +134,10 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
         settings = self.coordinator.api.operation_settings
         key = self.entity_description.key
 
-        if key == "heat_curve_mode":
-            return settings.heat_curve.mode.value
-        elif key == "heating_kind":
-            return settings.heat_curve.heating_kind.value
-        elif key == "heating_performance_mode":
-            return settings.heating_performance_mode.value
-        elif key == "sound_mode":
-            return settings.sound_mode.value
-        elif key == "sound_compressor_power":
-            return settings.sound_compressor_power.value
-        elif key == "sound_fan_speed":
-            return settings.sound_fan_speed.value
-        elif key == "advanced_thermostat_delay":
-            return settings.advanced_thermostat_delay.value
-        elif key == "backup_heating_mode":
-            return settings.backup_heating_mode.value
-        elif key == "cooling_thermostat_type":
-            return settings.cooling_thermostat_type.value
-        elif key == "cooling_control_mode":
-            return settings.cooling_control_mode.value
-
-        return None
+        # For heat curve settings, we need to access the nested structure
+        if key in ["heat_curve_mode", "heating_kind"]:
+            return getattr(settings.heat_curve, key.replace("heat_curve_", ""), None).value
+        return getattr(settings, key, None).value if hasattr(settings, key) else None
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selected option."""
