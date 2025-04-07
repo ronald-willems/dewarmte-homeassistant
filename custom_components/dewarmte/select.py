@@ -142,22 +142,7 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
     async def async_select_option(self, option: str) -> None:
         """Update the current selected option."""
         key = self.entity_description.key
-        settings = {}
+        settings = {key: option}
 
-        # For sound settings, we need to include all three settings
-        if key in ["sound_mode", "sound_compressor_power", "sound_fan_speed"]:
-            current_settings = self.coordinator.api.operation_settings
-            if current_settings:
-                settings = {
-                    "sound_mode": current_settings.sound_mode.value,
-                    "sound_compressor_power": current_settings.sound_compressor_power.value,
-                    "sound_fan_speed": current_settings.sound_fan_speed.value,
-                }
-                # Update the specific setting that was changed
-                settings[key] = option
-        else:
-            settings[key] = option
-
-        if settings:
-            await self.coordinator.api.async_update_operation_settings(settings)
-            await self.coordinator.async_request_refresh() 
+        await self.coordinator.api.async_update_operation_settings(settings)
+        await self.coordinator.async_request_refresh() 
