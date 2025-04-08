@@ -40,7 +40,7 @@ SENSOR_DEFINITIONS: Dict[str, SensorDefinition] = {
         key="water_flow",
         name="Water Flow",
         var_name="water_flow",
-        device_class=SensorDeviceClass.FLOW_RATE,
+        device_class=SensorDeviceClass.WATER,
         state_class=SensorStateClass.MEASUREMENT,
         unit=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
         convert_func=lambda x: float(x) * 60.0
@@ -134,5 +134,33 @@ SENSOR_DEFINITIONS: Dict[str, SensorDefinition] = {
         state_class=SensorStateClass.MEASUREMENT,
         unit=UnitOfPower.KILO_WATT,
         convert_func=float
+    ),
+    # Operational status sensors
+    "is_on": SensorDefinition(
+        key="is_on",
+        name="Operational Status",
+        var_name="is_on",
+        device_class=SensorDeviceClass.ENUM,
+        state_class=None,
+        unit=None,
+        convert_func=bool
+    ),
+    "fault_code": SensorDefinition(
+        key="fault_code",
+        name="Fault Code",
+        var_name="fault_code",
+        device_class=None,
+        state_class=None,
+        unit=None,
+        convert_func=int
+    ),
+    "time": SensorDefinition(
+        key="time",
+        name="Last Update",
+        var_name="time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        state_class=None,
+        unit=None,
+        convert_func=str  # The timestamp is already in ISO format
     ),
 } 
