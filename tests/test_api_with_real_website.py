@@ -34,32 +34,6 @@ async def main():
             for sensor_key, sensor in status_data.items():
                 print(f"  - {sensor.name}: {sensor.value} {sensor.unit}")
 
-            print("\nTesting advanced settings updates...")
-            try:
-                # Test enabling boost mode with max delay
-                await test.api.async_update_operation_settings({
-                    "advanced_boost_mode_control": True,
-                    "advanced_thermostat_delay": "max"
-                })
-                print("✓ Successfully enabled boost mode with max delay")
-                
-                # Test disabling boost mode with min delay
-                await test.api.async_update_operation_settings({
-                    "advanced_boost_mode_control": False,
-                    "advanced_thermostat_delay": "min"
-                })
-                print("✓ Successfully disabled boost mode with min delay")
-                
-                # Test enabling boost mode with medium delay
-                await test.api.async_update_operation_settings({
-                    "advanced_boost_mode_control": True,
-                    "advanced_thermostat_delay": "med"
-                })
-                print("✓ Successfully enabled boost mode with medium delay")
-            except Exception as err:
-                print(f"Failed to update advanced settings: {err}")
-                print("✗ Failed to update advanced settings")
-
             print("\nAll tests completed!")
 
     except Exception as err:
