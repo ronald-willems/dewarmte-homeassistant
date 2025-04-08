@@ -4,7 +4,7 @@
   "config_flow": true,
   "documentation": "https://github.com/ronald-willems/dewarmte-homeassistant",
   "issue_tracker": "https://github.com/ronald-willems/dewarmte-homeassistant/issues",
-  "requirements": [],
+  "requirements": ["aiohttp>=3.8.0", "requests>=2.31.0", "pyyaml>=6.0.1"],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},

@@ -154,13 +154,4 @@ SENSOR_DEFINITIONS: Dict[str, SensorDefinition] = {
         unit=None,
         convert_func=int
     ),
-    "time": SensorDefinition(
-        key="time",
-        name="Last Update",
-        var_name="time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        state_class=None,
-        unit=None,
-        convert_func=str  # The timestamp is already in ISO format
-    ),
 } 

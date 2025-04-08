@@ -25,9 +25,8 @@ class DeWarmteSwitchEntityDescription(SwitchEntityDescription):
 SWITCH_DESCRIPTIONS = {
     "advanced_boost_mode_control": DeWarmteSwitchEntityDescription(
         key="advanced_boost_mode_control",
-        name="Advanced Boost Mode Control",
-        icon="mdi:rocket-launch",
-        translation_key="advanced_boost_mode_control"
+        name="Boost Mode",
+        icon="mdi:rocket-launch"
     ),
 }
 
@@ -65,7 +64,7 @@ class DeWarmteSwitch(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEnt
         super().__init__(coordinator)
         self._setting_id = setting_id
         self.entity_description = description
-        self._attr_unique_id = setting_id  # Simplified to match select entities pattern
+        self._attr_unique_id = setting_id
         self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_device_info = coordinator.device_info
