@@ -31,7 +31,7 @@ class Device:
         """Return device information."""
         if not self._info:
             self._info = DeviceInfo(
-                name=self.name or f"DeWarmte {self.product_id}",
+                name=self.name or f"PompAO {self.product_id}",
             )
         return self._info
 

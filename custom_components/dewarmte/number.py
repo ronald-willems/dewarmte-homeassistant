@@ -28,7 +28,7 @@ TEMPERATURE_NUMBERS = {
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=-10.0,
         native_max_value=15.0,
-        native_step=1,
+        native_step=1.0,
     ),
     "heat_curve_s1_target_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s1_target_temp",
