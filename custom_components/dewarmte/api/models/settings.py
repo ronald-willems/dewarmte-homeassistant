@@ -68,8 +68,10 @@ class HeatCurveMode(str, Enum):
 
 class HeatingKind(str, Enum):
     """Heating kind settings."""
-    DEFAULT = "default"
     CUSTOM = "custom"
+    FLOOR = "floor"
+    RADIATOR = "radiator"
+    BOTH = "both"
 
 class HeatingPerformanceMode(str, Enum):
     """Heating performance mode settings."""

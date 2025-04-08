@@ -137,7 +137,7 @@ class DeWarmteApiClient:
             raise ValueError("No device selected")
 
         # If any heat curve settings are being updated, we need to send all heat curve settings
-        if any(key.startswith("heat_curve_") for key in settings.keys()):
+        if any(key.startswith("heat_curve_") for key in settings.keys()) or "heating_kind" in settings:
             # Get current heat curve settings
             current_settings = await self.async_get_operation_settings()
             if not current_settings:
@@ -161,11 +161,18 @@ class DeWarmteApiClient:
             # Send all heat curve settings at once
             heat_curve_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/heat-curve/"
             _LOGGER.debug("Making POST request to %s with data: %s", heat_curve_url, heat_curve_settings)
-            await self._session.post(
+            async with self._session.post(
                 heat_curve_url,
                 json=heat_curve_settings,
                 headers=self._auth.headers,
-            )
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to update heat curve settings: %d", response.status)
+                    response_text = await response.text()
+                    _LOGGER.error("Response: %s", response_text)
+                    raise ValueError(f"Failed to update heat curve settings: {response.status}")
+                response_data = await response.json()
+                _LOGGER.debug("Heat curve settings update response: %s", response_data)
         elif "heating_performance_mode" in settings:
             # For heating performance mode, use the dedicated endpoint
             _LOGGER.debug("Updating heating performance mode with settings: %s", settings)
