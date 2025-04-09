@@ -43,7 +43,7 @@ SENSOR_DEFINITIONS: Dict[str, SensorDefinition] = {
         device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         unit=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
-        convert_func=lambda x: float(x) * 60.0
+
     ),
     "supply_temperature": SensorDefinition(
         key="supply_temperature",
