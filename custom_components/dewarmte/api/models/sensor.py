@@ -43,7 +43,7 @@ SENSOR_DEFINITIONS: Dict[str, SensorDefinition] = {
         device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         unit=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
-
+        convert_func=float
     ),
     "supply_temperature": SensorDefinition(
         key="supply_temperature",
@@ -138,7 +138,7 @@ SENSOR_DEFINITIONS: Dict[str, SensorDefinition] = {
     # Operational status sensors
     "is_on": SensorDefinition(
         key="is_on",
-        name="Operational Status",
+        name="Is On",
         var_name="is_on",
         device_class=SensorDeviceClass.ENUM,
         state_class=None,
@@ -153,5 +153,14 @@ SENSOR_DEFINITIONS: Dict[str, SensorDefinition] = {
         state_class=None,
         unit=None,
         convert_func=int
+    ),
+    "is_connected": SensorDefinition(
+        key="is_connected",
+        name="Is Connected",
+        var_name="is_connected",
+        device_class=SensorDeviceClass.ENUM,
+        state_class=None,
+        unit=None,
+        convert_func=bool
     ),
 } 
