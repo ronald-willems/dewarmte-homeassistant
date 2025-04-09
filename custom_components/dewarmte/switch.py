@@ -36,20 +36,17 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the DeWarmte switch platform."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    
-    # Create boost mode switch
-    switches = [
-        DeWarmteSwitch(
-            coordinator=coordinator,
-            setting_id="advanced_boost_mode_control",
-            description=SWITCH_DESCRIPTIONS["advanced_boost_mode_control"]
-        )
-    ]
-    
-    async_add_entities(switches, True)
+    coordinator: DeWarmteDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    _LOGGER.debug("Setting up DeWarmte switch platform")
 
-class DeWarmteSwitch(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEntity):
+    entities = []
+    for setting_id, description in SWITCH_DESCRIPTIONS.items():
+        if coordinator.api.operation_settings is not None:
+            entities.append(DeWarmteSwitchEntity(coordinator, setting_id, description))
+
+    async_add_entities(entities)
+
+class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEntity):
     """Representation of a DeWarmte switch."""
 
     entity_description: DeWarmteSwitchEntityDescription
@@ -64,51 +61,25 @@ class DeWarmteSwitch(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEnt
         super().__init__(coordinator)
         self._setting_id = setting_id
         self.entity_description = description
-        self._attr_unique_id = setting_id
+        self._attr_unique_id = f"{coordinator.device.device_id}_{setting_id}"
         self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_device_info = coordinator.device_info
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return (
-            self.coordinator.last_update_success and
-            self.coordinator.api.operation_settings is not None
-        )
 
     @property
     def is_on(self) -> bool | None:
         """Return true if the switch is on."""
         if not self.coordinator.api.operation_settings:
             return None
-            
-        return self.coordinator.api.operation_settings.advanced_boost_mode_control
+
+        return getattr(self.coordinator.api.operation_settings, self._setting_id)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        try:
-            # When turning on boost mode, we need to provide both boost mode and current thermostat delay
-            current_settings = self.coordinator.api.operation_settings
-            if current_settings:
-                await self.coordinator.api.async_update_operation_settings({
-                    "advanced_boost_mode_control": True,
-                    "advanced_thermostat_delay": current_settings.advanced_thermostat_delay
-                })
-                await self.coordinator.async_request_refresh()
-        except Exception as err:
-            _LOGGER.error("Failed to turn on boost mode: %s", err)
+        await self.coordinator.api.async_update_operation_settings({self._setting_id: True})
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        try:
-            # When turning off boost mode, we need to provide both boost mode and current thermostat delay
-            current_settings = self.coordinator.api.operation_settings
-            if current_settings:
-                await self.coordinator.api.async_update_operation_settings({
-                    "advanced_boost_mode_control": False,
-                    "advanced_thermostat_delay": current_settings.advanced_thermostat_delay
-                })
-                await self.coordinator.async_request_refresh()
-        except Exception as err:
-            _LOGGER.error("Failed to turn off boost mode: %s", err) 
+        await self.coordinator.api.async_update_operation_settings({self._setting_id: False})
+        await self.coordinator.async_request_refresh() 
