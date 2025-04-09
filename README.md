@@ -1,4 +1,4 @@
-# DeWarmte Integration for Home Assistant
+# DeWarmte Integration for Home Assistant (unofficial)
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release][releases-shield]][releases]
@@ -6,7 +6,7 @@
 
 This integration allows you to control and monitor your DeWarmte heat pump system through Home Assistant.
 
-This integration is *not* an official integration of DeWarmte. It is currently still in alpha status. Please reach out for issues and requests using github issues.
+This integration is *not* an official integration of DeWarmte. It is currently still in beta status. Please reach out for issues and requests using github issues.
  
 
 ## Features
@@ -19,26 +19,32 @@ This integration is *not* an official integration of DeWarmte. It is currently s
 
 ## Installation
 
-### HACS (Recommended)
+### HACS 
 
 1. Install [HACS](https://hacs.xyz/) if you haven't already
-2. Go to HACS > Integrations
-3. Click the "+ Explore & Download Repositories" button
-4. Search for "DeWarmte"
-5. Click Install
-6. Restart Home Assistant
+2. Go to HACS
+3. Click menu button in top left and click on Custom Repositories
+4. Add https://github.com/ronald-willems/dewarmte-homeassistant
+5. Choose integration
+6. Click Download
+7. Go to Settings=>Devices&Services
+8. Click on 'Add integration'
+9. Search for 'DeWarmte'
+10. Click install
+11. Provide username and password for MyDewarmte app / web.
+12. Restart Home Assistant
 
 ### Manual Installation
 
 1. Copy the `custom_components/dewarmte` directory to your Home Assistant's `custom_components` directory
-2. Restart Home Assistant
+2. Go to Settings=>Devices&Services
+3. Click on 'Add integration'
+4. Search for 'DeWarmte'
+5. Click install
+6. Provide username and password for MyDewarmte app / web.
+7. Restart Home Assistant
 
-## Configuration
 
-1. Go to Settings > Devices & Services
-2. Click "+ Add Integration"
-3. Search for "DeWarmte"
-4. Enter your DeWarmte username and password
 
 ## Entities
 
