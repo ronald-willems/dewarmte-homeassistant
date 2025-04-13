@@ -17,6 +17,16 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
 
+# Temperature constants
+MIN_OUTSIDE_TEMP = -10.0
+MAX_OUTSIDE_TEMP = 15.0
+MIN_TARGET_TEMP = 0.0
+MAX_TARGET_TEMP = 60.0
+MIN_BACKUP_TEMP = -20.0
+MAX_BACKUP_TEMP = 40.0
+MIN_COOLING_TEMP = 15.0
+MAX_COOLING_TEMP = 30.0
+
 @dataclass
 class DeWarmteNumberEntityDescription(NumberEntityDescription):
     """Class describing DeWarmte number entities."""
@@ -26,56 +36,56 @@ TEMPERATURE_NUMBERS = {
         key="heat_curve_s1_outside_temp",
         name="Heat Curve S1 Outside Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=-10.0,
-        native_max_value=15.0,
+        native_min_value=MIN_OUTSIDE_TEMP,
+        native_max_value=MAX_OUTSIDE_TEMP,
         native_step=1.0,
     ),
     "heat_curve_s1_target_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s1_target_temp",
         name="Heat Curve S1 Target Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=0.0,
-        native_max_value=60.0,
+        native_min_value=MIN_TARGET_TEMP,
+        native_max_value=MAX_TARGET_TEMP,
         native_step=1.0,
     ),
     "heat_curve_s2_outside_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s2_outside_temp",
         name="Heat Curve S2 Outside Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=-10.0,
-        native_max_value=15.0,
+        native_min_value=MIN_OUTSIDE_TEMP,
+        native_max_value=MAX_OUTSIDE_TEMP,
         native_step=1.0,
     ),
     "heat_curve_s2_target_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s2_target_temp",
         name="Heat Curve S2 Target Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=0.0,
-        native_max_value=60.0,
+        native_min_value=MIN_TARGET_TEMP,
+        native_max_value=MAX_TARGET_TEMP,
         native_step=1.0,
     ),
     "heat_curve_fixed_temperature": DeWarmteNumberEntityDescription(
         key="heat_curve_fixed_temperature",
         name="Heat Curve Fixed Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=0.0,
-        native_max_value=60.0,
+        native_min_value=MIN_TARGET_TEMP,
+        native_max_value=MAX_TARGET_TEMP,
         native_step=1.0,
     ),
     "heating_performance_backup_temperature": DeWarmteNumberEntityDescription(
         key="heating_performance_backup_temperature",
         name="Heating Performance Backup Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=-20.0,
-        native_max_value=40.0,
+        native_min_value=MIN_BACKUP_TEMP,
+        native_max_value=MAX_BACKUP_TEMP,
         native_step=1.0,
     ),
     "cooling_temperature": DeWarmteNumberEntityDescription(
         key="cooling_temperature",
         name="Cooling Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=15.0,
-        native_max_value=30.0,
+        native_min_value=MIN_COOLING_TEMP,
+        native_max_value=MAX_COOLING_TEMP,
         native_step=1.0,
     ),
 }

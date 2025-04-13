@@ -23,31 +23,6 @@ class HeatCurveSettings(BaseModel):
     fixed_temperature: float
     use_smart_correction: bool
 
-    @property
-    def s1_outside_temp_celsius(self) -> float:
-        """Get S1 outside temperature in Celsius."""
-        return self.s1_outside_temp
-
-    @property
-    def s1_target_temp_celsius(self) -> float:
-        """Get S1 target temperature in Celsius."""
-        return self.s1_target_temp
-
-    @property
-    def s2_outside_temp_celsius(self) -> float:
-        """Get S2 outside temperature in Celsius."""
-        return self.s2_outside_temp
-
-    @property
-    def s2_target_temp_celsius(self) -> float:
-        """Get S2 target temperature in Celsius."""
-        return self.s2_target_temp
-
-    @property
-    def fixed_temperature_celsius(self) -> float:
-        """Get fixed temperature in Celsius."""
-        return self.fixed_temperature
-
 @dataclass
 class DeviceOperationSettings(BaseModel):
     """Device operation settings."""
