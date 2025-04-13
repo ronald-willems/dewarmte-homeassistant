@@ -3,27 +3,27 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 from enum import Enum
 
-from . import BaseModel
+
 
 # Constants
 UNIT_CELSIUS = "°C"
 
 @dataclass
-class ConnectionSettings(BaseModel):
+class ConnectionSettings():
     """Connection settings for DeWarmte API."""
     username: str
     password: str
     update_interval: int = 300  # 5 minutes in seconds
 
 @dataclass
-class PollingSettings(BaseModel):
+class PollingSettings():
     """Polling settings for data updates."""
     scan_interval: int = 30  # seconds
     retry_count: int = 3
     retry_delay: int = 5  # seconds
 
 @dataclass
-class DeviceSettings(BaseModel):
+class DeviceSettings():
     """Device-specific settings."""
     name: Optional[str] = None
     area: Optional[str] = None
@@ -32,7 +32,7 @@ class DeviceSettings(BaseModel):
     entity_category: Optional[str] = None
 
 @dataclass
-class IntegrationSettings(BaseModel):
+class IntegrationSettings():
     """Main settings container for the integration."""
     connection: ConnectionSettings
     polling: PollingSettings
@@ -92,14 +92,14 @@ class PowerLevel(str, Enum):
     MAX = "max"
 
 @dataclass
-class WarmWaterRange(BaseModel):
+class WarmWaterRange():
     """Warm water range settings."""
     order: int
     temperature: float
     period: str
 
 @dataclass
-class HeatCurveSettings(BaseModel):
+class HeatCurveSettings():
     """Heat curve settings."""
     mode: HeatCurveMode
     heating_kind: HeatingKind
@@ -136,7 +136,7 @@ class HeatCurveSettings(BaseModel):
         return self.fixed_temperature
 
 @dataclass
-class DeviceOperationSettings(BaseModel):
+class DeviceOperationSettings():
     """Device operation settings."""
     advanced_boost_mode_control: bool
     advanced_thermostat_delay: ThermostatDelay

@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import aiohttp
 
 from .models.device import Device
-from .models.sensor import SENSOR_DEFINITIONS
 from .models.api_sensor import ApiSensor
 from .models.settings import ConnectionSettings, DeviceOperationSettings
 from .auth import DeWarmteAuth
