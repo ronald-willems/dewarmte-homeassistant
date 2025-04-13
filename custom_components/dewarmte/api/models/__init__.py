@@ -2,8 +2,8 @@
 
 from .device import Device
 from .api_sensor import ApiSensor
+from .config import ConnectionSettings
 from .settings import (
-    ConnectionSettings,
     DeviceOperationSettings,
     HeatCurveSettings,
     WarmWaterRange,

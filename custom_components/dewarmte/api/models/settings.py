@@ -3,13 +3,6 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 
 @dataclass
-class ConnectionSettings:
-    """Connection settings for DeWarmte API."""
-    username: str
-    password: str
-    update_interval: int = 300  # 5 minutes in seconds
-
-@dataclass
 class WarmWaterRange:
     """Warm water range settings."""
     order: int
