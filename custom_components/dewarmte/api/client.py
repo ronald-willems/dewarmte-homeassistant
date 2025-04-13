@@ -7,7 +7,8 @@ from typing import Any, Dict, Optional
 import aiohttp
 
 from .models.device import Device
-from .models.sensor import SENSOR_DEFINITIONS, DeviceSensor
+from .models.sensor import SENSOR_DEFINITIONS
+from .models.api_sensor import ApiSensor
 from .models.settings import ConnectionSettings, DeviceOperationSettings
 from .auth import DeWarmteAuth
 
@@ -45,7 +46,7 @@ class DeWarmteApiClient:
             return True
         return False
 
-    async def async_get_status_data(self) -> Dict[str, DeviceSensor]:
+    async def async_get_status_data(self) -> Dict[str, ApiSensor]:
         """Get status data from the API."""
         if not self._device:
             _LOGGER.error("No device available")
@@ -81,24 +82,12 @@ class DeWarmteApiClient:
                         _LOGGER.debug("Combined status data: %s", status)
                         
                         # Map the status data to sensors
-                        sensors: Dict[str, DeviceSensor] = {}
-                        for sensor_def in SENSOR_DEFINITIONS.values():
-                            _LOGGER.debug("Checking sensor %s (var_name: %s)", sensor_def.key, sensor_def.var_name)
-                            if sensor_def.var_name in status:
-                                value = status[sensor_def.var_name]
-                                _LOGGER.debug("Found value for %s: %s", sensor_def.key, value)
-                                if sensor_def.convert_func:
-                                    value = sensor_def.convert_func(value)
-                                sensors[sensor_def.key] = DeviceSensor(
-                                    key=sensor_def.key,
-                                    name=sensor_def.name,
-                                    value=value,
-                                    device_class=sensor_def.device_class,
-                                    state_class=sensor_def.state_class,
-                                    unit=sensor_def.unit,
-                                )
-                            else:
-                                _LOGGER.debug("No value found for %s", sensor_def.key)
+                        sensors: Dict[str, ApiSensor] = {}
+                        for key, value in status.items():
+                            # Convert key to snake_case if needed
+                            key = key.lower().replace(" ", "_")
+                            sensors[key] = ApiSensor(key=key, value=value)
+                        
                         _LOGGER.debug("Created sensors: %s", sensors)
                         return sensors
                 

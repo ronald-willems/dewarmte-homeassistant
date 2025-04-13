@@ -24,6 +24,7 @@ async def main():
             print(f"  - Heating Performance Mode: {settings.heating_performance_mode}")
             print(f"  - Backup Heating Mode: {settings.backup_heating_mode}")
             print(f"  - Heat Curve Mode: {settings.heat_curve.mode}")
+            print(f"  - Sound Mode: {settings.sound_mode}")
 
             print("\nTesting status data...")
             status_data = await test.api.async_get_status_data()
@@ -32,7 +33,8 @@ async def main():
                 return
             print("✓ Successfully retrieved status data")
             for sensor_key, sensor in status_data.items():
-                print(f"  - {sensor.name}: {sensor.value} {sensor.unit}")
+                if sensor.value is not None:
+                    print(f"  - {sensor_key}: {sensor.value}")
 
             print("\nAll tests completed!")
 
@@ -40,4 +42,4 @@ async def main():
         print(f"Error: {err}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

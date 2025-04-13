@@ -13,15 +13,7 @@ from homeassistant.const import (
     UnitOfVolumeFlowRate,
 )
 
-@dataclass
-class DeviceSensor:
-    """Device sensor model."""
-    key: str
-    name: str
-    value: float | bool | str
-    device_class: Optional[SensorDeviceClass]
-    state_class: Optional[SensorStateClass]
-    unit: Optional[str]
+
 
 @dataclass
 class SensorDefinition:

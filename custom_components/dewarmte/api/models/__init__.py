@@ -1,7 +1,8 @@
 """API data models."""
 from .base import BaseModel
 from .device import Device
-from .sensor import DeviceSensor, SENSOR_DEFINITIONS
+from .sensor import SENSOR_DEFINITIONS
+from .api_sensor import ApiSensor
 from .settings import (
     ConnectionSettings,
     DeviceOperationSettings,
@@ -21,7 +22,7 @@ from .settings import (
 __all__ = [
     "BaseModel",
     "Device",
-    "DeviceSensor",
+    "ApiSensor",
     "SENSOR_DEFINITIONS",
     "ConnectionSettings",
     "DeviceOperationSettings",
