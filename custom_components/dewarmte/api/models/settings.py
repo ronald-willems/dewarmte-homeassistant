@@ -2,17 +2,22 @@
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 
-from .base import BaseModel
+@dataclass
+class ConnectionSettings:
+    """Connection settings for DeWarmte API."""
+    username: str
+    password: str
+    update_interval: int = 300  # 5 minutes in seconds
 
 @dataclass
-class WarmWaterRange(BaseModel):
+class WarmWaterRange:
     """Warm water range settings."""
     order: int
     temperature: float
     period: str
 
 @dataclass
-class HeatCurveSettings(BaseModel):
+class HeatCurveSettings:
     """Heat curve settings."""
     mode: str
     heating_kind: str
@@ -24,7 +29,7 @@ class HeatCurveSettings(BaseModel):
     use_smart_correction: bool
 
 @dataclass
-class DeviceOperationSettings(BaseModel):
+class DeviceOperationSettings:
     """Device operation settings."""
     advanced_boost_mode_control: bool
     advanced_thermostat_delay: str
