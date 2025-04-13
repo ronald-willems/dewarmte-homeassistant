@@ -75,7 +75,13 @@ async def main() -> None:
 
             # Update the setting
             try:
-                await test.api.async_update_operation_settings({setting_name: value})
+                # For heat curve settings, we need to handle them differently
+                if setting_name in ["heat_curve_mode", "heating_kind"]:
+                    settings = {"heat_curve": {setting_name.replace("heat_curve_", ""): value}}
+                else:
+                    settings = {setting_name: value}
+                
+                await test.api.async_update_operation_settings(settings)
                 print(f"Successfully updated {setting_name} to {args.new_state}")
             except Exception as err:
                 print(f"Failed to update setting: {err}")
