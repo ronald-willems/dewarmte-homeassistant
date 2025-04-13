@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+from enum import Enum
 
 from homeassistant.components.select import (
     SelectEntity,
@@ -15,17 +16,58 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
-from .api.models.settings import (
-    HeatCurveMode,
-    HeatingKind,
-    HeatingPerformanceMode,
-    SoundMode,
-    PowerLevel,
-    ThermostatDelay,
-    BackupHeatingMode,
-    CoolingThermostatType,
-    CoolingControlMode,
-)
+
+class HeatCurveMode(str, Enum):
+    """Heat curve mode settings."""
+    WEATHER = "weather"
+    FIXED = "fixed"
+
+class HeatingKind(str, Enum):
+    """Heating kind settings."""
+    CUSTOM = "custom"
+    FLOOR = "floor"
+    RADIATOR = "radiator"
+    BOTH = "both"
+
+class HeatingPerformanceMode(str, Enum):
+    """Heating performance mode settings."""
+    AUTO = "auto"
+    POMP_AO_ONLY = "pomp_ao_only"
+    POMP_AO_AND_BACKUP = "pomp_ao_and_backup"
+    BACKUP_ONLY = "backup_only"
+
+class SoundMode(str, Enum):
+    """Sound mode settings."""
+    NORMAL = "normal"
+    SILENT = "silent"
+
+class PowerLevel(str, Enum):
+    """Power level settings."""
+    MIN = "min"
+    MED = "med"
+    MAX = "max"
+
+class ThermostatDelay(str, Enum):
+    """Thermostat delay settings."""
+    MIN = "min"
+    MED = "med"
+    MAX = "max"
+
+class BackupHeatingMode(str, Enum):
+    """Backup heating mode settings."""
+    AUTO = "auto"
+    ECO = "eco"
+    COMFORT = "comfort"
+
+class CoolingThermostatType(str, Enum):
+    """Cooling thermostat type settings."""
+    HEATING_ONLY = "heating_only"
+    HEATING_AND_COOLING = "heating_and_cooling"
+
+class CoolingControlMode(str, Enum):
+    """Cooling control mode settings."""
+    THERMOSTAT = "thermostat"
+    MANUAL = "manual"
 
 @dataclass
 class DeWarmteSelectEntityDescription(SelectEntityDescription):

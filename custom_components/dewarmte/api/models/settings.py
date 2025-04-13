@@ -1,108 +1,21 @@
-"""Settings models for DeWarmte integration."""
+"""Settings models for DeWarmte API."""
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
-from enum import Enum
 
-
-
-# Constants
-UNIT_CELSIUS = "°C"
+from .base import BaseModel
 
 @dataclass
-class ConnectionSettings():
-    """Connection settings for DeWarmte API."""
-    username: str
-    password: str
-    update_interval: int = 300  # 5 minutes in seconds
-
-@dataclass
-class PollingSettings():
-    """Polling settings for data updates."""
-    scan_interval: int = 30  # seconds
-    retry_count: int = 3
-    retry_delay: int = 5  # seconds
-
-@dataclass
-class DeviceSettings():
-    """Device-specific settings."""
-    name: Optional[str] = None
-    area: Optional[str] = None
-    disabled: bool = False
-    disabled_by: Optional[str] = None
-    entity_category: Optional[str] = None
-
-@dataclass
-class IntegrationSettings():
-    """Main settings container for the integration."""
-    connection: ConnectionSettings
-    polling: PollingSettings
-    devices: Dict[str, DeviceSettings]
-    extra_settings: Dict[str, Any] = None
-
-class ThermostatDelay(str, Enum):
-    """Thermostat delay settings."""
-    MIN = "min"
-    MED = "med"
-    MAX = "max"
-
-class BackupHeatingMode(str, Enum):
-    """Backup heating mode settings."""
-    AUTO = "auto"
-    ECO = "eco"
-    COMFORT = "comfort"
-
-class CoolingThermostatType(str, Enum):
-    """Cooling thermostat type settings."""
-    HEATING_ONLY = "heating_only"
-    HEATING_AND_COOLING = "heating_and_cooling"
-
-class CoolingControlMode(str, Enum):
-    """Cooling control mode settings."""
-    THERMOSTAT = "thermostat"
-    MANUAL = "manual"
-
-class HeatCurveMode(str, Enum):
-    """Heat curve mode settings."""
-    WEATHER = "weather"
-    FIXED = "fixed"
-
-class HeatingKind(str, Enum):
-    """Heating kind settings."""
-    CUSTOM = "custom"
-    FLOOR = "floor"
-    RADIATOR = "radiator"
-    BOTH = "both"
-
-class HeatingPerformanceMode(str, Enum):
-    """Heating performance mode settings."""
-    AUTO = "auto"
-    POMP_AO_ONLY = "pomp_ao_only"
-    POMP_AO_AND_BACKUP = "pomp_ao_and_backup"
-    BACKUP_ONLY = "backup_only"
-
-class SoundMode(str, Enum):
-    """Sound mode settings."""
-    NORMAL = "normal"
-    SILENT = "silent"
-
-class PowerLevel(str, Enum):
-    """Power level settings."""
-    MIN = "min"
-    MED = "med"
-    MAX = "max"
-
-@dataclass
-class WarmWaterRange():
+class WarmWaterRange(BaseModel):
     """Warm water range settings."""
     order: int
     temperature: float
     period: str
 
 @dataclass
-class HeatCurveSettings():
+class HeatCurveSettings(BaseModel):
     """Heat curve settings."""
-    mode: HeatCurveMode
-    heating_kind: HeatingKind
+    mode: str
+    heating_kind: str
     s1_outside_temp: float
     s1_target_temp: float
     s2_outside_temp: float
@@ -136,21 +49,21 @@ class HeatCurveSettings():
         return self.fixed_temperature
 
 @dataclass
-class DeviceOperationSettings():
+class DeviceOperationSettings(BaseModel):
     """Device operation settings."""
     advanced_boost_mode_control: bool
-    advanced_thermostat_delay: ThermostatDelay
-    backup_heating_mode: BackupHeatingMode
-    cooling_thermostat_type: CoolingThermostatType
+    advanced_thermostat_delay: str
+    backup_heating_mode: str
+    cooling_thermostat_type: str
     cooling_temperature: float
-    cooling_control_mode: CoolingControlMode
+    cooling_control_mode: str
     cooling_duration: int
     heat_curve: HeatCurveSettings
-    heating_performance_mode: HeatingPerformanceMode
+    heating_performance_mode: str
     heating_performance_backup_temperature: float
-    sound_mode: SoundMode
-    sound_compressor_power: PowerLevel
-    sound_fan_speed: PowerLevel
+    sound_mode: str
+    sound_compressor_power: str
+    sound_fan_speed: str
     warm_water_is_scheduled: bool
     warm_water_ranges: List[WarmWaterRange]
     version: int
@@ -160,8 +73,8 @@ class DeviceOperationSettings():
     def from_api_response(cls, data: Dict[str, Any]) -> "DeviceOperationSettings":
         """Create settings from API response."""
         heat_curve = HeatCurveSettings(
-            mode=HeatCurveMode(data["heat_curve_mode"]),
-            heating_kind=HeatingKind(data["heating_kind"]),
+            mode=data["heat_curve_mode"],
+            heating_kind=data["heating_kind"],
             s1_outside_temp=float(data["heat_curve_s1_outside_temp"]),
             s1_target_temp=float(data["heat_curve_s1_target_temp"]),
             s2_outside_temp=float(data["heat_curve_s2_outside_temp"]),
@@ -177,18 +90,18 @@ class DeviceOperationSettings():
 
         return cls(
             advanced_boost_mode_control=bool(data["advanced_boost_mode_control"]),
-            advanced_thermostat_delay=ThermostatDelay(data["advanced_thermostat_delay"]),
-            backup_heating_mode=BackupHeatingMode(data["backup_heating_mode"]),
-            cooling_thermostat_type=CoolingThermostatType(data["cooling_thermostat_type"]),
+            advanced_thermostat_delay=data["advanced_thermostat_delay"],
+            backup_heating_mode=data["backup_heating_mode"],
+            cooling_thermostat_type=data["cooling_thermostat_type"],
             cooling_temperature=float(data["cooling_temperature"]),
-            cooling_control_mode=CoolingControlMode(data["cooling_control_mode"]),
+            cooling_control_mode=data["cooling_control_mode"],
             cooling_duration=int(data["cooling_duration"]),
             heat_curve=heat_curve,
-            heating_performance_mode=HeatingPerformanceMode(data["heating_performance_mode"]),
+            heating_performance_mode=data["heating_performance_mode"],
             heating_performance_backup_temperature=float(data["heating_performance_backup_temperature"]),
-            sound_mode=SoundMode(data["sound_mode"]),
-            sound_compressor_power=PowerLevel(data["sound_compressor_power"]),
-            sound_fan_speed=PowerLevel(data["sound_fan_speed"]),
+            sound_mode=data["sound_mode"],
+            sound_compressor_power=data["sound_compressor_power"],
+            sound_fan_speed=data["sound_fan_speed"],
             warm_water_is_scheduled=bool(data["warm_water_is_scheduled"]),
             warm_water_ranges=warm_water_ranges,
             version=int(data["version"]),
