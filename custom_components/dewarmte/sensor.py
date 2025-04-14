@@ -8,7 +8,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
-from .api.models.sensor import SENSOR_DEFINITIONS
+
 from .const import DOMAIN
 
 from dataclasses import dataclass

@@ -8,7 +8,8 @@ import aiohttp
 
 from .models.device import Device
 from .models.api_sensor import ApiSensor
-from .models.settings import ConnectionSettings, DeviceOperationSettings
+from .models.config import ConnectionSettings
+from .models.settings import DeviceOperationSettings
 from .auth import DeWarmteAuth
 
 _LOGGER = logging.getLogger(__name__)

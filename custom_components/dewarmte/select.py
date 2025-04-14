@@ -178,8 +178,8 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
 
         # For heat curve settings, we need to access the nested structure
         if key in ["heat_curve_mode", "heating_kind"]:
-            return getattr(settings.heat_curve, key.replace("heat_curve_", ""), None).value
-        return getattr(settings, key, None).value if hasattr(settings, key) else None
+            return getattr(settings.heat_curve, key.replace("heat_curve_", ""), None)
+        return getattr(settings, key, None)
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selected option."""

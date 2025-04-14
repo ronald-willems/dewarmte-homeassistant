@@ -5,32 +5,25 @@ import logging
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
-import aiohttp
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorStateClass,
-)
+
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     Platform,
-    UnitOfTemperature,
-    UnitOfPower,
-    UnitOfVolumeFlowRate,
+
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
+
     DataUpdateCoordinator,
     UpdateFailed,
 )
 
-from custom_components.dewarmte.api.models.api_sensor import ApiSensor
-
 from .api.client import DeWarmteApiClient
-from .api.models.settings import ConnectionSettings
+from .api.models.config import ConnectionSettings
 from .api.models.device import Device
 from .api.models.api_sensor import ApiSensor
 from .const import DOMAIN
