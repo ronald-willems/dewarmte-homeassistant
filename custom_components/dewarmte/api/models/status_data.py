@@ -21,7 +21,7 @@ class StatusData:
     def from_dict(cls, data: dict) -> "StatusData":
         """Create StatusData from dictionary."""
         return cls(
-            water_flow=float(data.get("water_flow", 0)) * 60.0,
+            water_flow=float(data.get("water_flow", 0)) ,
             supply_temperature=float(data.get("supply_temperature", 0)),
             outdoor_temperature=float(data.get("outdoor_temperature", 0)),
             heat_input=float(data.get("heat_input", 0)),
