@@ -11,6 +11,7 @@ from .models.api_sensor import ApiSensor
 from .models.config import ConnectionSettings
 from .models.settings import DeviceOperationSettings
 from .auth import DeWarmteAuth
+from .models.status_data import StatusData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,11 +47,11 @@ class DeWarmteApiClient:
             return True
         return False
 
-    async def async_get_status_data(self) -> Dict[str, ApiSensor]:
+    async def async_get_status_data(self) -> StatusData | None:
         """Get status data from the API."""
         if not self._device:
             _LOGGER.error("No device available")
-            return {}
+            return None
 
         try:
             # Get main status data
@@ -59,7 +60,7 @@ class DeWarmteApiClient:
             async with self._session.get(products_url, headers=self._auth.headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to get status data: %d", response.status)
-                    return {}
+                    return None
                 data = await response.json()
                 _LOGGER.debug("Products data: %s", data)
                 
@@ -80,22 +81,13 @@ class DeWarmteApiClient:
                                     status["outdoor_temperature"] = tb_data["outdoor_temperature"]
                         
                         _LOGGER.debug("Combined status data: %s", status)
-                        
-                        # Map the status data to sensors
-                        sensors: Dict[str, ApiSensor] = {}
-                        for key, value in status.items():
-                            # Convert key to snake_case if needed
-                            key = key.lower().replace(" ", "_")
-                            sensors[key] = ApiSensor(key=key, value=value)
-                        
-                        _LOGGER.debug("Created sensors: %s", sensors)
-                        return sensors
+                        return StatusData.from_dict(status)
                 
                 _LOGGER.error("Device not found in products response")
-                return {}
+                return None
         except Exception as err:
             _LOGGER.error("Error getting status data: %s", str(err))
-            return {}
+            return None
 
     async def async_get_operation_settings(self) -> DeviceOperationSettings | None:
         """Get operation settings from the API."""

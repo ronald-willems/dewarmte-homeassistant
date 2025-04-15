@@ -24,6 +24,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfVolumeFlowRate,
 )
+from .api.models.status_data import StatusData
 
 
 
@@ -216,6 +217,6 @@ class DeWarmteSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         """Return the state of the sensor."""
-        if self.coordinator.data and self._sensor_def.key in self.coordinator.data:
-            return self.coordinator.data[self._sensor_def.key].value
+        if self.coordinator.data:
+            return getattr(self.coordinator.data, self._sensor_def.key, None)
         return None 

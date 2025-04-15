@@ -27,6 +27,7 @@ from .api.models.config import ConnectionSettings
 from .api.models.device import Device
 from .api.models.api_sensor import ApiSensor
 from .const import DOMAIN
+from .api.models.status_data import StatusData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return unload_ok
 
-class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[Dict[str, ApiSensor]]):
+class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
     """Class to manage fetching data from the API."""
 
     def __init__(
@@ -110,7 +111,7 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[Dict[str, ApiSensor]])
         """Get the current device."""
         return self.api.device
 
-    async def _async_update_data(self) -> Dict[str, ApiSensor]:
+    async def _async_update_data(self) -> StatusData:
         """Update data via library."""
         try:
             # First ensure we're logged in

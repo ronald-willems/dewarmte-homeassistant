@@ -1,6 +1,7 @@
 """Test the DeWarmte API v1 against a real website."""
 import asyncio
 from test_base import TestBase
+from custom_components.dewarmte.api.models.status_data import StatusData
 
 async def main():
     """Test the DeWarmte API v1 with real credentials."""
@@ -32,9 +33,11 @@ async def main():
                 print("✗ Failed to get status data")
                 return
             print("✓ Successfully retrieved status data")
-            for sensor_key, sensor in status_data.items():
-                if sensor.value is not None:
-                    print(f"  - {sensor_key}: {sensor.value}")
+            # Print all non-None values from the StatusData object
+            for field in StatusData.__dataclass_fields__:
+                value = getattr(status_data, field)
+                if value is not None:
+                    print(f"  - {field}: {value}")
 
             print("\nAll tests completed!")
 
