@@ -67,8 +67,8 @@ class DeWarmteApiClient:
                 # Find our device in the results
                 for product in data.get("results", []):
                     if product.get("id") == self._device.device_id:
-                        # Get both top-level and nested status data
-                        status = {**product, **product.get("status", {})}
+                        # Create StatusData from the product data
+                        status_data = StatusData.from_dict({**product, **product.get("status", {})})
                         
                         # Get outdoor temperature from tb-status endpoint
                         tb_status_url = f"{self._base_url}/customer/products/tb-status/"
@@ -78,10 +78,9 @@ class DeWarmteApiClient:
                                 tb_data = await tb_response.json()
                                 _LOGGER.debug("TB status data: %s", tb_data)
                                 if "outdoor_temperature" in tb_data:
-                                    status["outdoor_temperature"] = tb_data["outdoor_temperature"]
+                                    status_data.outdoor_temperature = float(tb_data["outdoor_temperature"])
                         
-                        _LOGGER.debug("Combined status data: %s", status)
-                        return StatusData.from_dict(status)
+                        return status_data
                 
                 _LOGGER.error("Device not found in products response")
                 return None
