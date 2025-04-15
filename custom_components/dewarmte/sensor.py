@@ -179,7 +179,7 @@ class DeWarmteSensor(DeWarmteEntity, SensorEntity):
     def native_value(self):
         """Return the state of the sensor."""
         if self.coordinator.data:
-            return getattr(self.coordinator.data, self.entity_description.key, None)
+            return getattr(self.coordinator.data, self.entity_description.var_name, None)
         return None
 
 async def async_setup_entry(
