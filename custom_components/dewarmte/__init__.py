@@ -5,19 +5,13 @@ import logging
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
-
-
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    Platform,
-
-)
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
-
     DataUpdateCoordinator,
     UpdateFailed,
 )
@@ -41,6 +35,9 @@ PLATFORMS: list[Platform] = [
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up DeWarmte from a config entry."""
     try:
+        # Import platforms here to avoid circular imports
+        from . import sensor, number, select, switch  # noqa: F401
+
         hass.data.setdefault(DOMAIN, {})
 
         # Create API client

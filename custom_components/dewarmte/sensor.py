@@ -18,150 +18,146 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
-from .entity import DeWarmteEntity
 
 @dataclass
 class DeWarmteSensorEntityDescription(SensorEntityDescription):
-    """Class describing DeWarmte sensor entities."""
-    var_name: str  # Variable name in API response
-    convert_func: Callable  # Function to convert the value
+    """Describes DeWarmte sensor entity."""
+
+    # Required fields (no default values)
+    key: str
+  #  var_name: str
+
+    # Optional fields (with default values)
+#    device_class: SensorDeviceClass | None = None
+#    state_class: SensorStateClass | None = None
+#    suggested_unit_of_measurement: str | None = None
+#    suggested_display_precision: int | None = None
 
 SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     # Status sensors
     DeWarmteSensorEntityDescription(
         key="water_flow",
         name="Water Flow",
-        var_name="water_flow",
+       # var_name="water_flow",
         device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
-        convert_func=float
     ),
     DeWarmteSensorEntityDescription(
         key="supply_temperature",
         name="Supply Temperature",
-        var_name="supply_temperature",
+     #   var_name="supply_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        convert_func=float
     ),
     DeWarmteSensorEntityDescription(
         key="outdoor_temperature",
         name="Outdoor Temperature",
-        var_name="outdoor_temperature",
+     #   var_name="outdoor_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        convert_func=float
     ),
     DeWarmteSensorEntityDescription(
         key="heat_input",
         name="Heat Input",
-        var_name="heat_input",
+     #   var_name="heat_input",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        convert_func=float
     ),
     DeWarmteSensorEntityDescription(
         key="actual_temperature",
         name="Actual Temperature",
-        var_name="actual_temperature",
+     #   var_name="actual_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        convert_func=float
     ),
     DeWarmteSensorEntityDescription(
         key="electricity_consumption",
         name="Electricity Consumption",
-        var_name="electricity_consumption",
+     #   var_name="electricity_consumption",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        convert_func=float
     ),
     DeWarmteSensorEntityDescription(
         key="heat_output",
         name="Heat Output",
-        var_name="heat_output",
+     #   var_name="heat_output",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        convert_func=float
     ),
     DeWarmteSensorEntityDescription(
         key="gas_boiler",
         name="Gas Boiler",
-        var_name="gas_boiler",
+     #   var_name="gas_boiler",
         device_class=SensorDeviceClass.ENUM,
         state_class=None,
         native_unit_of_measurement=None,
-        convert_func=bool
     ),
     DeWarmteSensorEntityDescription(
         key="thermostat",
         name="Thermostat",
-        var_name="thermostat",
+     #   var_name="thermostat",
         device_class=SensorDeviceClass.ENUM,
         state_class=None,
         native_unit_of_measurement=None,
-        convert_func=bool
     ),
     DeWarmteSensorEntityDescription(
         key="target_temperature",
         name="Target Temperature",
-        var_name="target_temperature",
+     #   var_name="target_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        convert_func=float
     ),
     DeWarmteSensorEntityDescription(
         key="electric_backup_usage",
         name="Electric Backup Usage",
-        var_name="electric_backup_usage",
+     #   var_name="electric_backup_usage",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        convert_func=float
     ),
     # Operational status sensors
     DeWarmteSensorEntityDescription(
         key="is_on",
         name="Is On",
-        var_name="is_on",
+     #   var_name="is_on",
         device_class=SensorDeviceClass.ENUM,
         state_class=None,
         native_unit_of_measurement=None,
-        convert_func=bool
     ),
     DeWarmteSensorEntityDescription(
         key="fault_code",
         name="Fault Code",
-        var_name="fault_code",
+     #   var_name="fault_code",
         device_class=None,
         state_class=None,
         native_unit_of_measurement=None,
-        convert_func=int
     ),
     DeWarmteSensorEntityDescription(
         key="is_connected",
         name="Is Connected",
-        var_name="is_connected",
+     #   var_name="is_connected",
         device_class=SensorDeviceClass.ENUM,
         state_class=None,
         native_unit_of_measurement=None,
-        convert_func=bool
     ),
 )
 
-class DeWarmteSensor(DeWarmteEntity, SensorEntity):
+class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEntity):
     """Representation of a DeWarmte sensor."""
+
+    entity_description: DeWarmteSensorEntityDescription
 
     def __init__(
         self,
@@ -174,12 +170,13 @@ class DeWarmteSensor(DeWarmteEntity, SensorEntity):
         # including _attr_name from the description's name field
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.device.device_id}_{description.key}"
+        self._attr_device_info = coordinator.device_info
 
     @property
     def native_value(self):
         """Return the state of the sensor."""
         if self.coordinator.data:
-            return getattr(self.coordinator.data, self.entity_description.var_name, None)
+            return getattr(self.coordinator.data, self.entity_description.key, None)
         return None
 
 async def async_setup_entry(
