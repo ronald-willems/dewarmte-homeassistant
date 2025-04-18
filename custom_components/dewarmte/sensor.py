@@ -156,6 +156,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
 
 class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEntity):
     """Representation of a DeWarmte sensor."""
+    _attr_has_entity_name = True
 
     entity_description: DeWarmteSensorEntityDescription
 
@@ -166,12 +167,15 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
+
         # The entity_description property automatically sets various attributes
         # including _attr_name from the description's name field
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.device.device_id}_{description.key}"
         self._attr_device_info = coordinator.device_info
-
+    
+        
+    
     @property
     def native_value(self):
         """Return the state of the sensor."""

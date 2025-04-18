@@ -176,7 +176,7 @@ class DeWarmteSimpleApiClient:
                 if data.get("results") and len(data["results"]) > 0:
                     product = data["results"][0]
                     device_id = product.get("id")
-                    product_id = str(product.get("related_ao"))
+                    product_id = str(product.get("name"))
                     return Device.from_api_response(device_id, product_id, self._token)
                 _LOGGER.error("No products found in response")
                 return None

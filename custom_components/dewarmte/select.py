@@ -153,6 +153,7 @@ async def async_setup_entry(
 class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SelectEntity):
     """Representation of a DeWarmte select entity."""
 
+    _attr_has_entity_name = True
     entity_description: DeWarmteSelectEntityDescription
 
     def __init__(

@@ -49,6 +49,7 @@ async def async_setup_entry(
 class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEntity):
     """Representation of a DeWarmte switch."""
 
+    _attr_has_entity_name = True
     entity_description: DeWarmteSwitchEntityDescription
 
     def __init__(
@@ -59,11 +60,9 @@ class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Swi
     ) -> None:
         """Initialize the switch."""
         super().__init__(coordinator)
-        self._setting_id = setting_id
+
         self.entity_description = description
-        self._attr_unique_id = f"{coordinator.device.device_id}_{setting_id}"
-        self._attr_has_entity_name = True
-        self._attr_should_poll = False
+        self._attr_unique_id = f"{coordinator.device.device_id}_{description.key}"
         self._attr_device_info = coordinator.device_info
 
     @property

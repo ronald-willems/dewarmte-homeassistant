@@ -106,6 +106,7 @@ async def async_setup_entry(
 class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], NumberEntity):
     """Representation of a DeWarmte number entity."""
 
+    _attr_has_entity_name = True
     entity_description: DeWarmteNumberEntityDescription
 
     def __init__(

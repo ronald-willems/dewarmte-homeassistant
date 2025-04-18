@@ -80,7 +80,7 @@ class DeWarmteAuth:
                 if products_data.get("results") and len(products_data["results"]) > 0:
                     product = products_data["results"][0]
                     self._device_id = product.get("id")
-                    self._product_id = str(product.get("related_ao"))
+                    self._product_id = str(product.get("name"))
                     _LOGGER.debug("Found device ID: %s, product ID: %s", self._device_id, self._product_id)
                 else:
                     _LOGGER.error("No products found in response")
