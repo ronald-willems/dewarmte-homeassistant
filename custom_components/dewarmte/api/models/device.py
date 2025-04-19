@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 @dataclass
-class DeviceInfo:
+class DwDeviceInfo:
     """Device information."""
     name: str
     manufacturer: str = "DeWarmte"
@@ -19,7 +19,7 @@ class Device:
     access_token: str
     name: str | None = None
     online: bool = False
-    _info: Optional[DeviceInfo] = None
+    _info: Optional[DwDeviceInfo] = None
 
     @property
     def is_online(self) -> bool:
@@ -27,10 +27,10 @@ class Device:
         return self.online
 
     @property
-    def info(self) -> DeviceInfo:
+    def info(self) -> DwDeviceInfo:
         """Return device information."""
         if not self._info:
-            self._info = DeviceInfo(
+            self._info = DwDeviceInfo(
                 name=self.name or f"DeWarmte {self.product_id}",
             )
         return self._info

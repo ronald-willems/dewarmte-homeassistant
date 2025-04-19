@@ -18,7 +18,7 @@ from homeassistant.helpers.update_coordinator import (
 
 from .api.client import DeWarmteApiClient
 from .api.models.config import ConnectionSettings
-from .api.models.device import Device
+from .api.models.device import Device, DwDeviceInfo
 from .api.models.api_sensor import ApiSensor
 from .const import DOMAIN
 from .api.models.status_data import StatusData
