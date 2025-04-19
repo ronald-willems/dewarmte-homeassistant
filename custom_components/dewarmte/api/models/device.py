@@ -8,8 +8,8 @@ class DwDeviceInfo:
     name: str
     manufacturer: str = "DeWarmte"
     model: str = "AO"
-    sw_version: str = "1.0.0"
-    hw_version: str = "1.0.0"
+    sw_version: str = ""
+    hw_version: str = ""
 
 @dataclass
 class Device:
