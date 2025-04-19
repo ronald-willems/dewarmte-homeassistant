@@ -42,7 +42,7 @@ async def async_setup_entry(
     entities = []
     for setting_id, description in SWITCH_DESCRIPTIONS.items():
         if coordinator.api.operation_settings is not None:
-            entities.append(DeWarmteSwitchEntity(coordinator, setting_id, description))
+            entities.append(DeWarmteSwitchEntity(coordinator, description))
 
     async_add_entities(entities)
 
@@ -55,7 +55,6 @@ class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Swi
     def __init__(
         self,
         coordinator: DeWarmteDataUpdateCoordinator,
-        setting_id: str,
         description: DeWarmteSwitchEntityDescription,
     ) -> None:
         """Initialize the switch."""
@@ -71,14 +70,14 @@ class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Swi
         if not self.coordinator.api.operation_settings:
             return None
 
-        return getattr(self.coordinator.api.operation_settings, self._setting_id)
+        return getattr(self.coordinator.api.operation_settings, self.entity_description.key)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        await self.coordinator.api.async_update_operation_settings({self._setting_id: True})
+        await self.coordinator.api.async_update_operation_settings({self.entity_description.key: True})
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        await self.coordinator.api.async_update_operation_settings({self._setting_id: False})
+        await self.coordinator.api.async_update_operation_settings({self.entity_description.key: False})
         await self.coordinator.async_request_refresh() 
