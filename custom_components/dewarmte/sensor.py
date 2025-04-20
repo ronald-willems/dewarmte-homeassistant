@@ -229,10 +229,11 @@ async def async_setup_entry(
         sensors.append(current_sensor)
         
         # If this is a power sensor, create an energy sensor for it
-        if current_sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT:
-            sensors.append(
-                DeWarmteEnergyIntegrationSensor(current_sensor)
-            )
+        # TODO: Add support for other units of measurement. Not working yet.
+        #if current_sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT:
+        #    sensors.append(
+        #        DeWarmteEnergyIntegrationSensor(current_sensor)
+        #    )
 
     async_add_entities(sensors)
 

@@ -76,12 +76,16 @@ class DeWarmteAuth:
                 products_data = await response.json()
                 _LOGGER.debug("Products info: %s", products_data)
 
-                # Extract device and product IDs from the first product
-                if products_data.get("results") and len(products_data["results"]) > 0:
-                    product = products_data["results"][0]
-                    self._device_id = product.get("id")
-                    self._product_id = str(product.get("name"))
-                    _LOGGER.debug("Found device ID: %s, product ID: %s", self._device_id, self._product_id)
+                # Find the first product with type='AO'
+                if products_data.get("results"):
+                    ao_product = next((product for product in products_data["results"] if product.get("type") == "AO"), None)
+                    if ao_product:
+                        self._device_id = ao_product.get("id")
+                        self._product_id = str(ao_product.get("name"))
+                        _LOGGER.debug("Found AO device ID: %s, product ID: %s", self._device_id, self._product_id)
+                    else:
+                        _LOGGER.error("No product found with type='AO'")
+                        return False, None, None, None
                 else:
                     _LOGGER.error("No products found in response")
                     return False, None, None, None
