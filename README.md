@@ -6,7 +6,7 @@
 
 This integration allows you to control and monitor your DeWarmte heat pump system through Home Assistant.
 
-This integration is *not* an official integration of DeWarmte. It is currently still in beta status. Please reach out for issues and requests using github issues.
+This integration is *not* an official integration of DeWarmte. Please reach out for issues and requests using github issues.
  
 
 ## Features
@@ -15,6 +15,11 @@ This integration is *not* an official integration of DeWarmte. It is currently s
 - View energy consumption
 - Adjust heat curves
 - Adjust settings
+
+Not working yet:
+- cooling controls
+- cannot add to energy dashboard. 
+- Other devices than PompAO
 
 
 ## Installation
