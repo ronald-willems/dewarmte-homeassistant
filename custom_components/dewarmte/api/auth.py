@@ -81,7 +81,7 @@ class DeWarmteAuth:
                     ao_product = next((product for product in products_data["results"] if product.get("type") == "AO"), None)
                     if ao_product:
                         self._device_id = ao_product.get("id")
-                        self._product_id = str(ao_product.get("name"))
+                        self._product_id = f"AO {str(ao_product.get('name'))}"
                         _LOGGER.debug("Found AO device ID: %s, product ID: %s", self._device_id, self._product_id)
                     else:
                         _LOGGER.error("No product found with type='AO'")
