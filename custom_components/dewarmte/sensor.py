@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
+from datetime import timedelta
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -12,6 +13,8 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfEnergy,
     UnitOfPower,
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
@@ -19,6 +22,8 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.components.integration.sensor import IntegrationSensor
+from homeassistant.helpers.typing import StateType
 
 from . import DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
@@ -182,6 +187,32 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
         if self.coordinator.data:
             return getattr(self.coordinator.data, self.entity_description.key, None)
         return None
+    
+
+
+
+class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
+    """DeWarmte energy integration sensor that calculates energy from power measurements."""
+
+    def __init__(self, source_sensor: DeWarmteSensor) -> None:
+        """Initialize the energy integration sensor."""
+        # Get the polling interval from the coordinator 
+        polling_interval = source_sensor.coordinator.update_interval.total_seconds()
+        
+        super().__init__(
+            name=f"{source_sensor.name} Energy",
+            source_entity=source_sensor.unique_id,
+            unit_prefix="k",
+            round_digits=2,
+            unit_time="h",
+            integration_method="trapezoidal",
+            unique_id=f"{source_sensor.unique_id}_energy",
+            max_sub_interval=timedelta(seconds=polling_interval * 2),
+            
+        )
+        self._attr_device_info = source_sensor.coordinator.device_info
+
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -191,7 +222,17 @@ async def async_setup_entry(
     """Set up DeWarmte sensors from a config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        DeWarmteSensor(coordinator, description)
-        for description in SENSOR_DESCRIPTIONS
-    ) 
+    # Add  sensors
+    sensors = []
+    for description in SENSOR_DESCRIPTIONS:
+        current_sensor = DeWarmteSensor(coordinator, description)
+        sensors.append(current_sensor)
+        
+        # If this is a power sensor, create an energy sensor for it
+        if current_sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT:
+            sensors.append(
+                DeWarmteEnergyIntegrationSensor(current_sensor)
+            )
+
+    async_add_entities(sensors)
+
