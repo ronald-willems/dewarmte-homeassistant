@@ -8,7 +8,7 @@
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},
-  "dependencies": [],
+  "dependencies": ["integration"],
   "codeowners": ["@ronald-willems"],
   "iot_class": "cloud_polling",
   "version": "1.0.0"
