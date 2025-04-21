@@ -198,6 +198,7 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_device_class = SensorDeviceClass.ENERGY
     _attr_icon = "mdi:lightning-bolt"
+    _attr_has_entity_name = True
 
     def __init__(self, source_sensor: DeWarmteSensor) -> None:
         """Initialize the energy integration sensor."""
