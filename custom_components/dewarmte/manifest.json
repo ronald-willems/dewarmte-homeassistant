@@ -11,6 +11,6 @@
   "issue_tracker": "https://github.com/ronald-willems/dewarmte-homeassistant/issues",
   "requirements": ["aiohttp>=3.8.0", "requests>=2.31.0", "pyyaml>=6.0.1"],
   "ssdp": [],
-  "version": "1.0.0",
+  "version": "1.2.0",
   "zeroconf": []
 } 
