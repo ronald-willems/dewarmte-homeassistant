@@ -213,7 +213,7 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
             unit_time="h",
             unit_prefix=None,  # kWh without additional prefix
             integration_method="trapezoidal",
-            max_sub_interval=timedelta(seconds=polling_interval * 2),
+            max_sub_interval=timedelta(seconds=polling_interval * 3),
         )
         self._attr_device_info = source_sensor.coordinator.device_info
 
