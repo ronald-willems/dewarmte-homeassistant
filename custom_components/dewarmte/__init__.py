@@ -27,6 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
+    Platform.BINARY_SENSOR,
     Platform.NUMBER,
     Platform.SELECT,
     Platform.SWITCH,
@@ -36,7 +37,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up DeWarmte from a config entry."""
     try:
         # Import platforms here to avoid circular imports
-        from . import sensor, number, select, switch  # noqa: F401
+        from . import sensor, binary_sensor, number, select, switch  # noqa: F401
 
         hass.data.setdefault(DOMAIN, {})
 
