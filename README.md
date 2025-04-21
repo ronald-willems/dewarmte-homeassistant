@@ -20,7 +20,6 @@ This integration is *not* an official integration of DeWarmte. Please reach out 
 
 Not working yet:
 - cooling controls
-- cannot add to energy dashboard. 
 - Other devices than PompAO
 
 

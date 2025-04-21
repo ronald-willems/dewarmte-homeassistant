@@ -10,7 +10,6 @@ This integration allows you to monitor and control your DeWarmte heat pump direc
 
 Not working yet:
 - Adjusting Cooling settings
-- Integration with energy dashboard
 - Other devices than PompAO
 
 ## Screenshots
