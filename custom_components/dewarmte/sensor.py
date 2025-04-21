@@ -25,7 +25,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.integration.sensor import IntegrationSensor
 from homeassistant.helpers.typing import StateType
 
-from . import DeWarmteDataUpdateCoordinator
+from . import _LOGGER, DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
 
 @dataclass
@@ -199,16 +199,26 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
         # Get the polling interval from the coordinator 
         polling_interval = source_sensor.coordinator.update_interval.total_seconds()
         
+        # Format the product_id for use in entity_id (replace spaces and hyphens with underscores)
+        formatted_id = source_sensor.coordinator.device.product_id.lower().replace(" ", "_").replace("-", "_")
+        source_entity_id = f"sensor.dewarmte_{formatted_id}_{source_sensor.entity_description.key}"
+        
+        _LOGGER.debug(
+            "Initializing energy integration sensor for %s with unique_id %s and source_entity %s",
+            source_sensor.name,
+            f"{source_sensor.unique_id}_energy",
+            source_entity_id
+        )
+        
         super().__init__(
             name=f"{source_sensor.name} Energy",
-            source_entity=source_sensor.unique_id,
+            source_entity=source_entity_id,
             unit_prefix="k",
             round_digits=2,
             unit_time="h",
             integration_method="trapezoidal",
             unique_id=f"{source_sensor.unique_id}_energy",
             max_sub_interval=timedelta(seconds=polling_interval * 2),
-            
         )
         self._attr_device_info = source_sensor.coordinator.device_info
 
@@ -230,10 +240,10 @@ async def async_setup_entry(
         
         # If this is a power sensor, create an energy sensor for it
         # TODO: Add support for other units of measurement. Not working yet.
-        #if current_sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT:
-        #    sensors.append(
-        #        DeWarmteEnergyIntegrationSensor(current_sensor)
-        #    )
+        if current_sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT:
+            sensors.append(
+                DeWarmteEnergyIntegrationSensor(current_sensor)
+            )
 
     async_add_entities(sensors)
 
