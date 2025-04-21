@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 from datetime import timedelta
+import asyncio
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -19,7 +20,7 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.integration.sensor import IntegrationSensor
@@ -194,33 +195,33 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
 class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
     """DeWarmte energy integration sensor that calculates energy from power measurements."""
 
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_icon = "mdi:lightning-bolt"
+
     def __init__(self, source_sensor: DeWarmteSensor) -> None:
         """Initialize the energy integration sensor."""
         # Get the polling interval from the coordinator 
         polling_interval = source_sensor.coordinator.update_interval.total_seconds()
         
-        # Format the product_id for use in entity_id (replace spaces and hyphens with underscores)
-        formatted_id = source_sensor.coordinator.device.product_id.lower().replace(" ", "_").replace("-", "_")
-        source_entity_id = f"sensor.dewarmte_{formatted_id}_{source_sensor.entity_description.key}"
-        
-        _LOGGER.debug(
-            "Initializing energy integration sensor for %s with unique_id %s and source_entity %s",
-            source_sensor.name,
-            f"{source_sensor.unique_id}_energy",
-            source_entity_id
-        )
-        
         super().__init__(
+            source_entity=source_sensor.entity_id,
             name=f"{source_sensor.name} Energy",
-            source_entity=source_entity_id,
-            unit_prefix="k",
+            unique_id=f"{source_sensor.unique_id}_energy",
             round_digits=2,
             unit_time="h",
+            unit_prefix=None,  # kWh without additional prefix
             integration_method="trapezoidal",
-            unique_id=f"{source_sensor.unique_id}_energy",
             max_sub_interval=timedelta(seconds=polling_interval * 2),
         )
         self._attr_device_info = source_sensor.coordinator.device_info
+
+    @callback
+    def async_reset(self) -> None:
+        """Reset the energy sensor."""
+        _LOGGER.debug("%s: Reset energy sensor", self.entity_id)
+        self._state = 0
+        self.async_write_ha_state()
 
 
 
@@ -232,18 +233,24 @@ async def async_setup_entry(
     """Set up DeWarmte sensors from a config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Add  sensors
-    sensors = []
-    for description in SENSOR_DESCRIPTIONS:
-        current_sensor = DeWarmteSensor(coordinator, description)
-        sensors.append(current_sensor)
-        
-        # If this is a power sensor, create an energy sensor for it
-        # TODO: Add support for other units of measurement. Not working yet.
-        if current_sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT:
-            sensors.append(
-                DeWarmteEnergyIntegrationSensor(current_sensor)
-            )
+    # First create regular sensors
+    regular_sensors = [DeWarmteSensor(coordinator, description) for description in SENSOR_DESCRIPTIONS]
+    _LOGGER.debug("Adding %d regular sensors", len(regular_sensors))
+    async_add_entities(regular_sensors)
 
-    async_add_entities(sensors)
+    # Wait for sensors to be registered; arbitrary number of seconds
+    await asyncio.sleep(5)
+
+    # Then create energy sensors for power sensors
+    energy_sensors = []
+    for sensor in regular_sensors:
+        if sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT:
+            _LOGGER.debug("Creating energy sensor for power sensor: %s", sensor.name)
+            energy_sensor = DeWarmteEnergyIntegrationSensor(sensor)
+            energy_sensors.append(energy_sensor)
+    
+    # Add energy sensors
+    if energy_sensors:
+        _LOGGER.debug("Adding %d energy sensors", len(energy_sensors))
+        async_add_entities(energy_sensors)
 
