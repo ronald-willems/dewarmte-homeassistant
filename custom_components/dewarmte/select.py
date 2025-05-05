@@ -67,8 +67,9 @@ class CoolingThermostatType(str, Enum):
 class CoolingControlMode(str, Enum):
     """Cooling control mode settings."""
     THERMOSTAT = "thermostat"
-    MANUAL = "manual"
-
+    COOLING_ONLY = "cooling_only"
+    HEATING_ONLY = "heating_only"
+    FORCED = "forced"
 @dataclass
 class DeWarmteSelectEntityDescription(SelectEntityDescription):
     """Class describing DeWarmte select entities."""

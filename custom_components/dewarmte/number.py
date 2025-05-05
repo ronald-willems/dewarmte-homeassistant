@@ -9,7 +9,7 @@ from homeassistant.components.number import (
     NumberEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature
+from homeassistant.const import UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -26,6 +26,10 @@ MIN_BACKUP_TEMP = -20.0
 MAX_BACKUP_TEMP = 40.0
 MIN_COOLING_TEMP = 15.0
 MAX_COOLING_TEMP = 30.0
+
+# Duration constants
+MIN_COOLING_DURATION = 0
+MAX_COOLING_DURATION = 259200  # 3 days in seconds
 
 @dataclass
 class DeWarmteNumberEntityDescription(NumberEntityDescription):
@@ -88,6 +92,14 @@ TEMPERATURE_NUMBERS = {
         native_max_value=MAX_COOLING_TEMP,
         native_step=1.0,
     ),
+    "cooling_duration": DeWarmteNumberEntityDescription(
+        key="cooling_duration",
+        name="Cooling Duration",
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        native_min_value=MIN_COOLING_DURATION,
+        native_max_value=MAX_COOLING_DURATION,
+        native_step=1.0,
+    ),
 }
 
 async def async_setup_entry(
@@ -143,6 +155,8 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
             return settings.heating_performance_backup_temperature
         elif key == "cooling_temperature":
             return settings.cooling_temperature
+        elif key == "cooling_duration":
+            return settings.cooling_duration
 
         return None
 
@@ -165,6 +179,8 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
             settings["heating_performance_backup_temperature"] = value
         elif key == "cooling_temperature":
             settings["cooling_temperature"] = value
+        elif key == "cooling_duration":
+            settings["cooling_duration"] = value
 
         if settings:
             await self.coordinator.api.async_update_operation_settings(settings)
