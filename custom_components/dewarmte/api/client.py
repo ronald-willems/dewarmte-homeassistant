@@ -231,7 +231,7 @@ class DeWarmteApiClient:
                     raise ValueError(f"Failed to update sound settings: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("Sound settings update response: %s", response_data)
-        elif any(key in settings for key in ["advanced_boost_mode_control", "advanced_thermostat_delay"]):
+        elif any(key in ["advanced_boost_mode_control", "advanced_thermostat_delay"] for key in settings.keys()):
             # For advanced settings (thermostat delay and boost mode), use the advanced endpoint
             _LOGGER.debug("Updating advanced settings with: %s", settings)
             
@@ -263,6 +263,39 @@ class DeWarmteApiClient:
                     raise ValueError(f"Failed to update advanced settings: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("Advanced settings update response: %s", response_data)
+        elif any(key in ["cooling_thermostat_type", "cooling_control_mode", "cooling_temperature", "cooling_duration"] for key in settings.keys()):
+            # For cooling settings, use the dedicated cooling endpoint
+            _LOGGER.debug("Updating cooling settings with: %s", settings)
+            
+            # Get current settings to include all cooling settings
+            current_settings = await self.async_get_operation_settings()
+            if not current_settings:
+                raise ValueError("Could not get current settings")
+            
+            # Include all cooling settings in the update
+            update_settings = {
+                "cooling_thermostat_type": current_settings.cooling_thermostat_type,
+                "cooling_control_mode": current_settings.cooling_control_mode,
+                "cooling_temperature": current_settings.cooling_temperature,
+                "cooling_duration": current_settings.cooling_duration,
+            }
+            # Update with new values
+            update_settings.update(settings)
+            
+            cooling_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/cooling/"
+            _LOGGER.debug("Making POST request to %s with data: %s", cooling_url, update_settings)
+            async with self._session.post(
+                cooling_url,
+                json=update_settings,
+                headers=self._auth.headers,
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to update cooling settings: %d", response.status)
+                    response_text = await response.text()
+                    _LOGGER.error("Response: %s", response_text)
+                    raise ValueError(f"Failed to update cooling settings: {response.status}")
+                response_data = await response.json()
+                _LOGGER.debug("Cooling settings update response: %s", response_data)
         else:
             # For all other settings, use the regular settings endpoint
             _LOGGER.debug("Updating regular settings with: %s", settings)
