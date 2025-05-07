@@ -141,24 +141,8 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
         settings = self.coordinator.api.operation_settings
         key = self.entity_description.key
 
-        if key == "heat_curve_s1_outside_temp":
-            return settings.heat_curve.s1_outside_temp
-        elif key == "heat_curve_s1_target_temp":
-            return settings.heat_curve.s1_target_temp
-        elif key == "heat_curve_s2_outside_temp":
-            return settings.heat_curve.s2_outside_temp
-        elif key == "heat_curve_s2_target_temp":
-            return settings.heat_curve.s2_target_temp
-        elif key == "heat_curve_fixed_temperature":
-            return settings.heat_curve.fixed_temperature
-        elif key == "heating_performance_backup_temperature":
-            return settings.heating_performance_backup_temperature
-        elif key == "cooling_temperature":
-            return settings.cooling_temperature
-        elif key == "cooling_duration":
-            return settings.cooling_duration
-
-        return None
+        # All settings are now at the root level
+        return getattr(settings, key, None)
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""

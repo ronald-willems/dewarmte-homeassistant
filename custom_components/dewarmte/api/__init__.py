@@ -6,7 +6,6 @@ from .models import (
     DeviceOperationSettings,
     Device,
     ApiSensor,
-    HeatCurveSettings,
     WarmWaterRange,
 )
 
@@ -17,6 +16,5 @@ __all__ = [
     "DeviceOperationSettings",
     "Device",
     "ApiSensor",
-    "HeatCurveSettings",
     "WarmWaterRange",
 ] 
