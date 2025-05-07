@@ -39,13 +39,45 @@ class DeWarmteApiClient:
 
     async def async_login(self) -> bool:
         """Login to the API and get device info."""
-        success, device_id, product_id, access_token = await self._auth.login()
-        if success and device_id and product_id and access_token:
-            self._device = Device.from_api_response(device_id, product_id, access_token)
-            # Get initial settings
-            await self.async_get_operation_settings()
-            return True
-        return False
+        # Get access token
+        token = await self._auth.login()
+        if not token:
+            return False
+
+        try:
+            # Get device info
+            products_url = f"{self._base_url}/customer/products/"
+            _LOGGER.debug("Making GET request to %s", products_url)
+            async with self._session.get(products_url, headers=self._auth.headers) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to get products info: %d", response.status)
+                    return False
+                data = await response.json()
+                _LOGGER.debug("Products data: %s", data)
+                
+                # Find AO device
+                ao_product = next((p for p in data.get("results", []) if p.get("type") == "AO"), None)
+                if not ao_product:
+                    _LOGGER.error("No product found with type='AO'")
+                    return False
+
+                # Create device
+                self._device = Device.from_api_response(
+                    device_id=ao_product["id"],
+                    product_id=f"AO {ao_product['name']}",
+                    access_token=token,
+                    supports_cooling=ao_product.get("cooling", False)
+                )
+                _LOGGER.debug("Found AO device ID: %s, product ID: %s, cooling support: %s", 
+                            self._device.device_id, self._device.product_id, self._device.supports_cooling)
+                
+                # Get initial settings
+                await self.async_get_operation_settings()
+                return True
+
+        except Exception as err:
+            _LOGGER.error("Error getting device info: %s", str(err))
+            return False
 
     async def async_get_status_data(self) -> StatusData | None:
         """Get status data from the API."""

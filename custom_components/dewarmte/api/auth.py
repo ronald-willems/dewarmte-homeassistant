@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import logging
-import asyncio
-from typing import Optional, Tuple
+from typing import Optional
 
 import aiohttp
 
@@ -19,8 +18,6 @@ class DeWarmteAuth:
         self._base_url = "https://api.mydewarmte.com/v1"
         self._session = session
         self._access_token: str | None = None
-        self._device_id: str | None = None
-        self._product_id: str | None = None
         
         self._headers = {
             "Accept": "application/json",
@@ -36,10 +33,9 @@ class DeWarmteAuth:
             "Authorization": "Bearer null"  # Required for initial login
         }
 
-    async def login(self) -> tuple[bool, str | None, str | None, str | None]:
-        """Login to DeWarmte API."""
+    async def login(self) -> str | None:
+        """Login to DeWarmte API and get access token."""
         try:
-            # First get the access token
             login_url = f"{self._base_url}/auth/token/"
             login_data = {
                 "email": self._username,
@@ -49,55 +45,22 @@ class DeWarmteAuth:
             async with self._session.post(login_url, json=login_data, headers=self._headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Login failed with status %d: %s", response.status, await response.text())
-                    return False, None, None, None
+                    return None
                 data = await response.json()
                 self._access_token = data.get("access")
                 if not self._access_token:
                     _LOGGER.error("No access token in response")
-                    return False, None, None, None
+                    return None
                 self._headers["Authorization"] = f"Bearer {self._access_token}"
                 _LOGGER.debug("Successfully obtained access token")
-
-            # Get user info
-            user_url = f"{self._base_url}/auth/user/"
-            async with self._session.get(user_url, headers=self._headers) as response:
-                if response.status != 200:
-                    _LOGGER.error("Failed to get user info with status %d: %s", response.status, await response.text())
-                    return False, None, None, None
-                user_data = await response.json()
-                _LOGGER.debug("User info: %s", user_data)
-
-            # Get products info
-            products_url = f"{self._base_url}/customer/products/"
-            async with self._session.get(products_url, headers=self._headers) as response:
-                if response.status != 200:
-                    _LOGGER.error("Failed to get products info with status %d: %s", response.status, await response.text())
-                    return False, None, None, None
-                products_data = await response.json()
-                _LOGGER.debug("Products info: %s", products_data)
-
-                # Find the first product with type='AO'
-                if products_data.get("results"):
-                    ao_product = next((product for product in products_data["results"] if product.get("type") == "AO"), None)
-                    if ao_product:
-                        self._device_id = ao_product.get("id")
-                        self._product_id = f"AO {str(ao_product.get('name'))}"
-                        _LOGGER.debug("Found AO device ID: %s, product ID: %s", self._device_id, self._product_id)
-                    else:
-                        _LOGGER.error("No product found with type='AO'")
-                        return False, None, None, None
-                else:
-                    _LOGGER.error("No products found in response")
-                    return False, None, None, None
-
-            return True, self._device_id, self._product_id, self._access_token
+                return self._access_token
 
         except Exception as err:
             _LOGGER.error("Error during login: %s", str(err))
             _LOGGER.error("Error type: %s", type(err).__name__)
             import traceback
             _LOGGER.error("Traceback: %s", traceback.format_exc())
-            return False, None, None, None
+            return None
 
     @property
     def headers(self) -> dict[str, str]:
