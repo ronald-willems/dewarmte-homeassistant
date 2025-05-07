@@ -16,6 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
+from .api.models.settings import SETTING_GROUPS
 
 class HeatCurveMode(str, Enum):
     """Heat curve mode settings."""
@@ -70,6 +71,7 @@ class CoolingControlMode(str, Enum):
     COOLING_ONLY = "cooling_only"
     HEATING_ONLY = "heating_only"
     FORCED = "forced"
+
 @dataclass
 class DeWarmteSelectEntityDescription(SelectEntityDescription):
     """Class describing DeWarmte select entities."""
@@ -146,10 +148,15 @@ async def async_setup_entry(
     """Set up the DeWarmte select entities."""
     coordinator: DeWarmteDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        DeWarmteSelectEntity(coordinator, description)
-        for description in MODE_SELECTS.values()
-    )
+    # Filter out cooling entities if cooling is not supported
+    entities = []
+    for description in MODE_SELECTS.values():
+        # Skip cooling entities if cooling is not supported
+        if description.key in SETTING_GROUPS["cooling"].keys and not coordinator.device.supports_cooling:
+            continue
+        entities.append(DeWarmteSelectEntity(coordinator, description))
+
+    async_add_entities(entities)
 
 class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SelectEntity):
     """Representation of a DeWarmte select entity."""

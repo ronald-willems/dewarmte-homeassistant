@@ -16,6 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
+from .api.models.settings import SETTING_GROUPS
 
 # Temperature constants
 MIN_OUTSIDE_TEMP = -10.0
@@ -110,10 +111,15 @@ async def async_setup_entry(
     """Set up the DeWarmte number entities."""
     coordinator: DeWarmteDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        DeWarmteNumberEntity(coordinator, description)
-        for description in TEMPERATURE_NUMBERS.values()
-    )
+    # Filter out cooling entities if cooling is not supported
+    entities = []
+    for description in TEMPERATURE_NUMBERS.values():
+        # Skip cooling entities if cooling is not supported
+        if description.key in SETTING_GROUPS["cooling"].keys and not coordinator.device.supports_cooling:
+            continue
+        entities.append(DeWarmteNumberEntity(coordinator, description))
+
+    async_add_entities(entities)
 
 class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], NumberEntity):
     """Representation of a DeWarmte number entity."""

@@ -18,14 +18,9 @@ class Device:
     product_id: str
     access_token: str
     name: str | None = None
-    online: bool = False
     supports_cooling: bool = False
     _info: Optional[DwDeviceInfo] = None
 
-    @property
-    def is_online(self) -> bool:
-        """Return if the device is online."""
-        return self.online
 
     @property
     def info(self) -> DwDeviceInfo:
@@ -44,6 +39,5 @@ class Device:
             product_id=product_id,
             access_token=access_token,
             name=name,
-            online=True,  # We assume it's online if we can get the data
             supports_cooling=supports_cooling
         ) 
