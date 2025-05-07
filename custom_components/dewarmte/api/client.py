@@ -3,51 +3,17 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, Union, Callable, List
-from dataclasses import dataclass
 
 import aiohttp
 
 from .models.device import Device
 from .models.api_sensor import ApiSensor
 from .models.config import ConnectionSettings
-from .models.settings import DeviceOperationSettings
-from .models.settings_group import SettingsGroup
+from .models.settings import DeviceOperationSettings, SettingsGroup, SETTING_GROUPS
 from .auth import DeWarmteAuth
 from .models.status_data import StatusData
 
 _LOGGER = logging.getLogger(__name__)
-
-# Define all settings groups
-SETTING_GROUPS = {
-    "heat_curve": SettingsGroup(
-        endpoint="heat-curve",
-        keys=["heat_curve_mode", "heating_kind", "heat_curve_s1_outside_temp", 
-              "heat_curve_s1_target_temp", "heat_curve_s2_outside_temp", 
-              "heat_curve_s2_target_temp", "heat_curve_fixed_temperature", 
-              "heat_curve_use_smart_correction"],
-    ),
-    "heating_performance": SettingsGroup(
-        endpoint="heating-performance",
-        keys=["heating_performance_mode", "heating_performance_backup_temperature"],
-    ),
-    "backup_heating": SettingsGroup(
-        endpoint="backup-heating",
-        keys=["backup_heating_mode"],
-    ),
-    "sound": SettingsGroup(
-        endpoint="sound",
-        keys=["sound_mode", "sound_compressor_power", "sound_fan_speed"],
-    ),
-    "advanced": SettingsGroup(
-        endpoint="advanced",
-        keys=["advanced_boost_mode_control", "advanced_thermostat_delay"],
-    ),
-    "cooling": SettingsGroup(
-        endpoint="cooling",
-        keys=["cooling_thermostat_type", "cooling_control_mode", 
-              "cooling_temperature", "cooling_duration"],
-    ),
-}
 
 class DeWarmteApiClient:
     """API client for DeWarmte v1."""

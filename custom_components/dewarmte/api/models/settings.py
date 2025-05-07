@@ -3,6 +3,12 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 
 @dataclass
+class SettingsGroup:
+    """Represents a group of related settings that are updated together."""
+    endpoint: str
+    keys: List[str]
+
+@dataclass
 class WarmWaterRange:
     """Warm water range settings."""
     order: int
@@ -76,4 +82,36 @@ class DeviceOperationSettings:
             warm_water_ranges=warm_water_ranges,
             version=int(data["version"]),
             is_applied=bool(data["is_applied"])
-        ) 
+        )
+
+# Define all settings groups
+SETTING_GROUPS = {
+    "heat_curve": SettingsGroup(
+        endpoint="heat-curve",
+        keys=["heat_curve_mode", "heating_kind", "heat_curve_s1_outside_temp", 
+              "heat_curve_s1_target_temp", "heat_curve_s2_outside_temp", 
+              "heat_curve_s2_target_temp", "heat_curve_fixed_temperature", 
+              "heat_curve_use_smart_correction"],
+    ),
+    "heating_performance": SettingsGroup(
+        endpoint="heating-performance",
+        keys=["heating_performance_mode", "heating_performance_backup_temperature"],
+    ),
+    "backup_heating": SettingsGroup(
+        endpoint="backup-heating",
+        keys=["backup_heating_mode"],
+    ),
+    "sound": SettingsGroup(
+        endpoint="sound",
+        keys=["sound_mode", "sound_compressor_power", "sound_fan_speed"],
+    ),
+    "advanced": SettingsGroup(
+        endpoint="advanced",
+        keys=["advanced_boost_mode_control", "advanced_thermostat_delay"],
+    ),
+    "cooling": SettingsGroup(
+        endpoint="cooling",
+        keys=["cooling_thermostat_type", "cooling_control_mode", 
+              "cooling_temperature", "cooling_duration"],
+    ),
+} 
