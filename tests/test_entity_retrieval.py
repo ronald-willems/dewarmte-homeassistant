@@ -24,7 +24,7 @@ async def main():
             print("✓ Successfully retrieved operation settings")
             print(f"  - Heating Performance Mode: {settings.heating_performance_mode}")
             print(f"  - Backup Heating Mode: {settings.backup_heating_mode}")
-            print(f"  - Heat Curve Mode: {settings.heat_curve.mode}")
+            print(f"  - Heat Curve Mode: {settings.heat_curve_mode}")
             print(f"  - Sound Mode: {settings.sound_mode}")
 
             print("\nTesting status data...")
