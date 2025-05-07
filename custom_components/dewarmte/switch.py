@@ -73,11 +73,11 @@ class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Swi
         return getattr(self.coordinator.api.operation_settings, self.entity_description.key)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on."""
-        await self.coordinator.api.async_update_operation_settings({self.entity_description.key: True})
+        """Turn the entity on."""
+        await self.coordinator.api.async_update_operation_settings(self.entity_description.key, True)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off."""
-        await self.coordinator.api.async_update_operation_settings({self.entity_description.key: False})
+        """Turn the entity off."""
+        await self.coordinator.api.async_update_operation_settings(self.entity_description.key, False)
         await self.coordinator.async_request_refresh() 

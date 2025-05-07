@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import aiohttp
 
@@ -111,13 +111,13 @@ class DeWarmteApiClient:
             _LOGGER.error("Error getting operation settings: %s", str(err))
             return None
 
-    async def async_update_operation_settings(self, settings: dict[str, Any]) -> None:
-        """Update operation settings."""
+    async def async_update_operation_settings(self, key: str, value: Union[float, str, int, bool]) -> None:
+        """Update a single operation setting."""
         if not self._device:
             raise ValueError("No device selected")
 
         # If any heat curve settings are being updated, we need to send all heat curve settings
-        if any(key.startswith("heat_curve_") for key in settings.keys()) or "heating_kind" in settings:
+        if key.startswith("heat_curve_") or key == "heating_kind":
             # Get current heat curve settings
             current_settings = await self.async_get_operation_settings()
             if not current_settings:
@@ -135,8 +135,8 @@ class DeWarmteApiClient:
                 "heat_curve_use_smart_correction": current_settings.heat_curve.use_smart_correction,
             }
 
-            # Update with new values
-            heat_curve_settings.update(settings)
+            # Update with new value
+            heat_curve_settings[key] = value
 
             # Send all heat curve settings at once
             heat_curve_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/heat-curve/"
@@ -153,9 +153,9 @@ class DeWarmteApiClient:
                     raise ValueError(f"Failed to update heat curve settings: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("Heat curve settings update response: %s", response_data)
-        elif "heating_performance_mode" in settings:
+        elif key == "heating_performance_mode":
             # For heating performance mode, use the dedicated endpoint
-            _LOGGER.debug("Updating heating performance mode with settings: %s", settings)
+            _LOGGER.debug("Updating heating performance mode with value: %s", value)
             
             # Get current settings to include backup temperature
             current_settings = await self.async_get_operation_settings()
@@ -164,7 +164,7 @@ class DeWarmteApiClient:
             
             # Include backup temperature in the update
             update_settings = {
-                "heating_performance_mode": settings["heating_performance_mode"],
+                "heating_performance_mode": value,
                 "heating_performance_backup_temperature": current_settings.heating_performance_backup_temperature
             }
             
@@ -182,14 +182,14 @@ class DeWarmteApiClient:
                     raise ValueError(f"Failed to update heating performance mode: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("Heating performance mode update response: %s", response_data)
-        elif "backup_heating_mode" in settings:
+        elif key == "backup_heating_mode":
             # For backup heating mode, use the dedicated backup-heating endpoint
-            _LOGGER.debug("Updating backup heating mode with settings: %s", settings)
+            _LOGGER.debug("Updating backup heating mode with value: %s", value)
             backup_heating_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/backup-heating/"
-            _LOGGER.debug("Making POST request to %s with data: %s", backup_heating_url, settings)
+            _LOGGER.debug("Making POST request to %s with data: %s", backup_heating_url, {key: value})
             async with self._session.post(
                 backup_heating_url,
-                json=settings,
+                json={key: value},
                 headers=self._auth.headers,
             ) as response:
                 if response.status != 200:
@@ -199,9 +199,9 @@ class DeWarmteApiClient:
                     raise ValueError(f"Failed to update backup heating mode: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("Backup heating mode update response: %s", response_data)
-        elif any(key in ["sound_mode", "sound_compressor_power", "sound_fan_speed"] for key in settings.keys()):
+        elif key in ["sound_mode", "sound_compressor_power", "sound_fan_speed"]:
             # For sound settings, use the dedicated sound endpoint
-            _LOGGER.debug("Updating sound settings with: %s", settings)
+            _LOGGER.debug("Updating sound setting %s with value: %s", key, value)
             
             # Get current settings to include all sound settings
             current_settings = await self.async_get_operation_settings()
@@ -210,12 +210,12 @@ class DeWarmteApiClient:
             
             # Include all sound settings in the update
             update_settings = {
-                "sound_mode": current_settings.sound_mode.value,
-                "sound_compressor_power": current_settings.sound_compressor_power.value,
-                "sound_fan_speed": current_settings.sound_fan_speed.value,
+                "sound_mode": current_settings.sound_mode,
+                "sound_compressor_power": current_settings.sound_compressor_power,
+                "sound_fan_speed": current_settings.sound_fan_speed,
             }
-            # Update with new values
-            update_settings.update(settings)
+            # Update with new value
+            update_settings[key] = value
             
             sound_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/sound/"
             _LOGGER.debug("Making POST request to %s with data: %s", sound_url, update_settings)
@@ -231,9 +231,9 @@ class DeWarmteApiClient:
                     raise ValueError(f"Failed to update sound settings: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("Sound settings update response: %s", response_data)
-        elif any(key in ["advanced_boost_mode_control", "advanced_thermostat_delay"] for key in settings.keys()):
+        elif key in ["advanced_boost_mode_control", "advanced_thermostat_delay"]:
             # For advanced settings (thermostat delay and boost mode), use the advanced endpoint
-            _LOGGER.debug("Updating advanced settings with: %s", settings)
+            _LOGGER.debug("Updating advanced setting %s with value: %s", key, value)
             
             # Get current settings to include any missing values
             current_settings = await self.async_get_operation_settings()
@@ -246,8 +246,8 @@ class DeWarmteApiClient:
                 "advanced_thermostat_delay": current_settings.advanced_thermostat_delay,
             }
             
-            # Update with new values
-            update_settings.update(settings)
+            # Update with new value
+            update_settings[key] = value
             
             advanced_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/advanced/"
             _LOGGER.debug("Making POST request to %s with data: %s", advanced_url, update_settings)
@@ -263,9 +263,9 @@ class DeWarmteApiClient:
                     raise ValueError(f"Failed to update advanced settings: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("Advanced settings update response: %s", response_data)
-        elif any(key in ["cooling_thermostat_type", "cooling_control_mode", "cooling_temperature", "cooling_duration"] for key in settings.keys()):
+        elif key in ["cooling_thermostat_type", "cooling_control_mode", "cooling_temperature", "cooling_duration"]:
             # For cooling settings, use the dedicated cooling endpoint
-            _LOGGER.debug("Updating cooling settings with: %s", settings)
+            _LOGGER.debug("Updating cooling setting %s with value: %s", key, value)
             
             # Get current settings to include all cooling settings
             current_settings = await self.async_get_operation_settings()
@@ -279,8 +279,8 @@ class DeWarmteApiClient:
                 "cooling_temperature": current_settings.cooling_temperature,
                 "cooling_duration": current_settings.cooling_duration,
             }
-            # Update with new values
-            update_settings.update(settings)
+            # Update with new value
+            update_settings[key] = value
             
             cooling_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/cooling/"
             _LOGGER.debug("Making POST request to %s with data: %s", cooling_url, update_settings)
@@ -298,9 +298,8 @@ class DeWarmteApiClient:
                 _LOGGER.debug("Cooling settings update response: %s", response_data)
         else:
             # Instead of using general endpoint, raise an error
-            unknown_settings = list(settings.keys())
             raise ValueError(
-                f"Unable to change settings {unknown_settings}. "
+                f"Unable to change setting {key}. "
                 "Please report this as a bug."
             )
 

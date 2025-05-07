@@ -184,9 +184,6 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
         return getattr(settings, key, None)
 
     async def async_select_option(self, option: str) -> None:
-        """Update the current selected option."""
-        key = self.entity_description.key
-        settings = {key: option}
-
-        await self.coordinator.api.async_update_operation_settings(settings)
+        """Change the selected option."""
+        await self.coordinator.api.async_update_operation_settings(self.entity_description.key, option)
         await self.coordinator.async_request_refresh() 
