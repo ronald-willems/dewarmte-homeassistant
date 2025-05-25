@@ -160,6 +160,26 @@ class DeWarmteApiClient:
         
         # Update with new value
         update_settings[key] = value
+
+        # Adjust cooling settings if needed
+        if group.endpoint == "cooling":
+            thermostat_type = update_settings.get("cooling_thermostat_type")
+            control_mode = update_settings.get("cooling_control_mode")
+            
+            if thermostat_type == "heating_only" and control_mode == "thermostat":
+                _LOGGER.debug(
+                    "Adjusting cooling settings: converting 'thermostat' to 'heating_only' "
+                    "for heating_only thermostat type"
+                )
+                update_settings["cooling_control_mode"] = "heating_only"
+                
+            elif thermostat_type == "heating_and_cooling" and control_mode in ["cooling_only", "heating_only"]:
+                _LOGGER.debug(
+                    "Adjusting cooling settings: converting '%s' to 'thermostat' "
+                    "for heating_and_cooling thermostat type",
+                    control_mode
+                )
+                update_settings["cooling_control_mode"] = "thermostat"
         
         _LOGGER.debug("Making POST request to %s with data: %s", url, update_settings)
         async with self._session.post(url, json=update_settings, headers=self._auth.headers) as response:
