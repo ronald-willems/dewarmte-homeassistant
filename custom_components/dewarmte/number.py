@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
+from functools import cached_property
 
 from homeassistant.components.number import (
     NumberEntity,
@@ -32,7 +33,7 @@ MAX_COOLING_TEMP = 25.0
 MIN_COOLING_DURATION = 0
 MAX_COOLING_DURATION = 259200  # 3 days in seconds
 
-@dataclass
+@dataclass(frozen=True)
 class DeWarmteNumberEntityDescription(NumberEntityDescription):
     """Class describing DeWarmte number entities."""
 
@@ -115,17 +116,18 @@ async def async_setup_entry(
     entities = []
     for description in TEMPERATURE_NUMBERS.values():
         # Skip cooling entities if cooling is not supported
-        if description.key in SETTING_GROUPS["cooling"].keys and not coordinator.device.supports_cooling:
-            continue
+        if description.key in SETTING_GROUPS["cooling"].keys:
+            assert coordinator.device is not None, "Coordinator device must not be None"
+            if not coordinator.device.supports_cooling:
+                continue
         entities.append(DeWarmteNumberEntity(coordinator, description))
 
     async_add_entities(entities)
 
-class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], NumberEntity):
+class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], NumberEntity): # type: ignore[override]
     """Representation of a DeWarmte number entity."""
 
     _attr_has_entity_name = True
-    entity_description: DeWarmteNumberEntityDescription
 
     def __init__(
         self,
@@ -134,23 +136,36 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
     ) -> None:
         """Initialize the number entity."""
         super().__init__(coordinator)
+        assert coordinator.device is not None, "Coordinator device must not be None"
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.device.device_id}_{description.key}"
         self._attr_device_info = coordinator.device_info
 
     @property
+    def dewarmte_description(self) -> DeWarmteNumberEntityDescription:
+        """Get the DeWarmte specific entity description."""
+        return cast(DeWarmteNumberEntityDescription, self.entity_description)
+
+    @cached_property
     def native_value(self) -> float | None:
         """Return the current value."""
         if not self.coordinator.api.operation_settings:
             return None
 
         settings = self.coordinator.api.operation_settings
-        key = self.entity_description.key
+        key = self.dewarmte_description.key
 
-        # All settings are now at the root level
-        return getattr(settings, key, None)
+        # Get the raw value and ensure it's a float
+        value = getattr(settings, key, None)
+        if value is None:
+            return None
+            
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
-        await self.coordinator.api.async_update_operation_settings(self.entity_description.key, value)
+        await self.coordinator.api.async_update_operation_settings(self.dewarmte_description.key, value)
         await self.coordinator.async_request_refresh() 

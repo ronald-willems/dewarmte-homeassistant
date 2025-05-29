@@ -143,8 +143,30 @@ class DeWarmteApiClient:
             _LOGGER.error("Error getting operation settings: %s", str(err))
             return None
 
+    async def async_update_operation_settings(self, key: str, value: Union[float, str, int, bool]) -> None:
+        """Update a single operation setting."""
+        if not self._device:
+            raise ValueError("No device selected")
+
+        _LOGGER.debug("Updating operation setting %s to %s", key, value)
+
+        # Find which group this setting belongs to
+        for group in SETTING_GROUPS.values():
+            if key in group.keys:
+                _LOGGER.debug("Found setting group %s for key %s", group.endpoint, key)
+                await self._update_settings(group, key, value)
+                # Refresh settings after update
+                await self.async_get_operation_settings()
+                return
+
+        raise ValueError(
+            f"Unable to change setting {key}. "
+            "Please report this as a bug."
+        )
+
     async def _update_settings(self, group: SettingsGroup, key: str, value: Any) -> None:
         """Common logic for updating settings."""
+        assert self._device is not None, "Device must be available to update settings"
         url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/{group.endpoint}/"
         
         # Get current settings
@@ -167,44 +189,23 @@ class DeWarmteApiClient:
             control_mode = update_settings.get("cooling_control_mode")
             
             if thermostat_type == "heating_only" and control_mode == "thermostat":
-                _LOGGER.debug(
-                    "Adjusting cooling settings: converting 'thermostat' to 'heating_only' "
-                    "for heating_only thermostat type"
-                )
+
                 update_settings["cooling_control_mode"] = "heating_only"
                 
             elif thermostat_type == "heating_and_cooling" and control_mode in ["cooling_only", "heating_only"]:
-                _LOGGER.debug(
-                    "Adjusting cooling settings: converting '%s' to 'thermostat' "
-                    "for heating_and_cooling thermostat type",
-                    control_mode
-                )
+
                 update_settings["cooling_control_mode"] = "thermostat"
         
         _LOGGER.debug("Making POST request to %s with data: %s", url, update_settings)
-        async with self._session.post(url, json=update_settings, headers=self._auth.headers) as response:
-            if response.status != 200:
-                _LOGGER.error("Failed to update %s settings: %d", group.endpoint, response.status)
-                response_text = await response.text()
-                _LOGGER.error("Response: %s", response_text)
-                raise ValueError(f"Failed to update {group.endpoint} settings: {response.status}")
-            response_data = await response.json()
-            _LOGGER.debug("%s settings update response: %s", group.endpoint, response_data)
-
-    async def async_update_operation_settings(self, key: str, value: Union[float, str, int, bool]) -> None:
-        """Update a single operation setting."""
-        if not self._device:
-            raise ValueError("No device selected")
-
-        # Find which group this setting belongs to
-        for group in SETTING_GROUPS.values():
-            if key in group.keys:
-                await self._update_settings(group, key, value)
-                # Refresh settings after update
-                await self.async_get_operation_settings()
-                return
-
-        raise ValueError(
-            f"Unable to change setting {key}. "
-            "Please report this as a bug."
-        ) 
+        try:
+            async with self._session.post(url, json=update_settings, headers=self._auth.headers) as response:
+                if response.status != 200:
+                    response_text = await response.text()
+                    _LOGGER.error("Failed to update %s settings: %d", group.endpoint, response.status)
+                    _LOGGER.error("Response: %s", response_text)
+                    raise ValueError(f"Failed to update {group.endpoint} settings: {response.status}")
+                response_data = await response.json()
+                _LOGGER.debug("%s settings update response: %s", group.endpoint, response_data)
+        except Exception as err:
+            _LOGGER.error("Error updating %s settings: %s", group.endpoint, str(err))
+            raise 

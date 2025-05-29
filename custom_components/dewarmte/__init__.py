@@ -134,7 +134,7 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         if not self.device:
-            return None
+            raise ValueError("Device must be available to get device info")
             
         return DeviceInfo(
             identifiers={(DOMAIN, self.device.device_id)},

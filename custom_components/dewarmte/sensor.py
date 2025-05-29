@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
-from datetime import timedelta
+from typing import Any, Callable, Optional, TypeVar, cast, final
+from datetime import timedelta, datetime
+from decimal import Decimal
 import asyncio
 
 from homeassistant.components.sensor import (
@@ -19,6 +20,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -28,27 +30,29 @@ from homeassistant.helpers.typing import StateType
 
 from . import _LOGGER, DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
+from .api.models.status_data import StatusData
 
-@dataclass
+# Type variable for sensor values
+SensorValueT = TypeVar('SensorValueT', float, int, str, bool)
+
+@dataclass(frozen=True)
 class DeWarmteSensorEntityDescription(SensorEntityDescription):
     """Describes DeWarmte sensor entity."""
 
-    # Required fields (no default values)
-    key: str
-  #  var_name: str
+    # Required fields
+    key: str  # The key used to access the sensor value in the coordinator data
 
-    # Optional fields (with default values)
-#    device_class: SensorDeviceClass | None = None
-#    state_class: SensorStateClass | None = None
-#    suggested_unit_of_measurement: str | None = None
-#    suggested_display_precision: int | None = None
+    # Optional fields with proper type hints
+    device_class: SensorDeviceClass | None = None
+    state_class: SensorStateClass | None = None
+    native_unit_of_measurement: str | None = None
+    suggested_display_precision: int | None = None
 
 SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     # Status sensors
     DeWarmteSensorEntityDescription(
         key="water_flow",
         name="Water Flow",
-       # var_name="water_flow",
         device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
@@ -56,7 +60,6 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     DeWarmteSensorEntityDescription(
         key="supply_temperature",
         name="Supply Temperature",
-     #   var_name="supply_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -64,7 +67,6 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     DeWarmteSensorEntityDescription(
         key="outdoor_temperature",
         name="Outdoor Temperature",
-     #   var_name="outdoor_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -72,7 +74,6 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     DeWarmteSensorEntityDescription(
         key="heat_input",
         name="Heat Input",
-     #   var_name="heat_input",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
@@ -80,7 +81,6 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     DeWarmteSensorEntityDescription(
         key="actual_temperature",
         name="Actual Temperature",
-     #   var_name="actual_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -88,7 +88,6 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     DeWarmteSensorEntityDescription(
         key="electricity_consumption",
         name="Electricity Consumption",
-     #   var_name="electricity_consumption",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
@@ -96,7 +95,6 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     DeWarmteSensorEntityDescription(
         key="heat_output",
         name="Heat Output",
-     #   var_name="heat_output",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
@@ -104,7 +102,6 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     DeWarmteSensorEntityDescription(
         key="target_temperature",
         name="Target Temperature",
-     #   var_name="target_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -112,7 +109,6 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     DeWarmteSensorEntityDescription(
         key="electric_backup_usage",
         name="Electric Backup Usage",
-     #   var_name="electric_backup_usage",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
@@ -121,18 +117,16 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     DeWarmteSensorEntityDescription(
         key="fault_code",
         name="Fault Code",
-     #   var_name="fault_code",
         device_class=None,
         state_class=None,
         native_unit_of_measurement=None,
     ),
 )
 
-class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEntity):
+@final
+class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEntity):  # type: ignore[override]
     """Representation of a DeWarmte sensor."""
     _attr_has_entity_name = True
-
-    entity_description: DeWarmteSensorEntityDescription
 
     def __init__(
         self,
@@ -141,25 +135,27 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-
-        # The entity_description property automatically sets various attributes
-        # including _attr_name from the description's name field
+        assert coordinator.device is not None, "Coordinator device must not be None"
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.device.device_id}_{description.key}"
         self._attr_device_info = coordinator.device_info
-    
-        
+
+    @property
+    def dewarmte_description(self) -> DeWarmteSensorEntityDescription:
+        """Get the DeWarmte specific entity description."""
+        return cast(DeWarmteSensorEntityDescription, self.entity_description)
     
     @property
-    def native_value(self):
+    def native_value(self) -> StateType:  # type: ignore[override]
         """Return the state of the sensor."""
-        if self.coordinator.data:
-            return getattr(self.coordinator.data, self.entity_description.key, None)
-        return None
-    
+        if not self.coordinator.data:
+            return None
+        value = getattr(self.coordinator.data, self.dewarmte_description.key, None)
+        if value is None:
+            return None
+        return cast(StateType, value)
 
-
-
+@final
 class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
     """DeWarmte energy integration sensor that calculates energy from power measurements."""
 
@@ -171,6 +167,8 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
     def __init__(self, source_sensor: DeWarmteSensor) -> None:
         """Initialize the energy integration sensor."""
         # Get the polling interval from the coordinator 
+        if source_sensor.coordinator.update_interval is None:
+            raise ValueError("Coordinator update interval is None")
         polling_interval = source_sensor.coordinator.update_interval.total_seconds()
         
         super().__init__(
@@ -178,7 +176,7 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
             name=f"{source_sensor.name} Energy",
             unique_id=f"{source_sensor.unique_id}_energy",
             round_digits=2,
-            unit_time="h",
+            unit_time=UnitOfTime.HOURS,  # Use proper enum value
             unit_prefix=None,  # kWh without additional prefix
             integration_method="trapezoidal",
             max_sub_interval=timedelta(seconds=polling_interval * 3),
@@ -189,10 +187,68 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
     def async_reset(self) -> None:
         """Reset the energy sensor."""
         _LOGGER.debug("%s: Reset energy sensor", self.entity_id)
-        self._state = 0
+        self._state = Decimal('0')  # Use Decimal instead of int
         self.async_write_ha_state()
 
+@final
+class DeWarmteCoPSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEntity):  # type: ignore[override]
+    """Representation of a DeWarmte CoP sensor."""
 
+    _attr_has_entity_name = True
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:heat-pump"
+    _attr_native_unit_of_measurement = None  # CoP is a ratio, no unit
+
+    def __init__(
+        self,
+        coordinator: DeWarmteDataUpdateCoordinator,
+        heat_output_sensor: DeWarmteEnergyIntegrationSensor,
+        electrical_input_sensor: DeWarmteEnergyIntegrationSensor,
+    ) -> None:
+        """Initialize the CoP sensor."""
+        super().__init__(coordinator)
+        self._heat_output_sensor = heat_output_sensor
+        self._electrical_input_sensor = electrical_input_sensor
+        assert coordinator.device is not None, "Coordinator device must not be None"
+        self._attr_unique_id = f"{coordinator.device.device_id}_cop"
+        self._attr_name = "Coefficient of Performance"
+        self._attr_device_info = coordinator.device_info
+
+    @property
+    def native_value(self) -> float | None:  # type: ignore[override]
+        """Return the current CoP value."""
+        if not self.coordinator.data:
+            return None
+
+        heat_output = self._heat_output_sensor.native_value
+        electrical_input = self._electrical_input_sensor.native_value
+
+        if not heat_output or not electrical_input or electrical_input == 0:
+            return 0.0
+
+        try:
+            cop = float(heat_output) / float(electrical_input)
+            # Validate CoP is within reasonable bounds (1-5 for heat pumps)
+            if cop < 1.0 or cop > 7.0:
+                _LOGGER.warning(
+                    "Calculated CoP value %.2f is outside expected range (1.0-7.0). "
+                    "This might indicate sensor issues.",
+                    cop
+                )
+            return round(cop, 2)
+        except (TypeError, ValueError):
+            _LOGGER.error("Failed to calculate CoP from values: heat_output=%s, electrical_input=%s",
+                         heat_output, electrical_input)
+            return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:  # type: ignore[override]
+        """Return additional state attributes."""
+        return {
+            "heat_output_kwh": self._heat_output_sensor.native_value,
+            "electrical_input_kwh": self._electrical_input_sensor.native_value,
+            "last_updated": datetime.now().isoformat() if self.coordinator.data else None,
+        }
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -222,4 +278,23 @@ async def async_setup_entry(
     if energy_sensors:
         _LOGGER.debug("Adding %d energy sensors", len(energy_sensors))
         async_add_entities(energy_sensors)
+
+        # Wait for energy sensors to be registered
+        await asyncio.sleep(5)
+
+        # Find heat output and electrical input energy sensors
+     #   heat_output_sensor = next(
+     #       (s for s in energy_sensors if s.source_sensor.entity_description.key == "heat_output"),
+     #       None
+     #   )
+     #   electrical_input_sensor = next(
+     #       (s for s in energy_sensors if s.source_sensor.entity_description.key == "electricity_consumption"),
+     #       None
+     #   )
+
+     #   if heat_output_sensor and electrical_input_sensor:
+            # Create and add CoP sensor
+     #       cop_sensor = DeWarmteCoPSensor(coordinator, heat_output_sensor, electrical_input_sensor)
+     #       _LOGGER.debug("Adding CoP sensor")
+     #       async_add_entities([cop_sensor])
 

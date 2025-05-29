@@ -19,7 +19,6 @@ This integration is *not* an official integration of DeWarmte. Please reach out 
 - Adjust settings
 
 Not working yet:
-- cooling controls
 - Other devices than PompAO
 
 
@@ -29,16 +28,14 @@ Not working yet:
 
 1. Install [HACS](https://hacs.xyz/) if you haven't already
 2. Go to HACS
-3. Click menu button in top left and click on Custom Repositories
-4. Add https://github.com/ronald-willems/dewarmte-homeassistant
-5. Choose integration
-6. Click Download
-7. Go to Settings=>Devices&Services
-8. Click on 'Add integration'
-9. Search for 'DeWarmte'
-10. Click install
-11. Provide username and password for MyDewarmte app / web.
-12. Restart Home Assistant
+3. Search for 'DeWarmte'
+4. Click Download
+5. Go to Settings=>Devices&Services
+6. Click on 'Add integration'
+7. Search for 'DeWarmte'
+8. Click install
+9. Provide username and password for MyDewarmte app / web.
+10. Restart Home Assistant
 
 ### Manual Installation
 
@@ -49,8 +46,6 @@ Not working yet:
 5. Click install
 6. Provide username and password for MyDewarmte app / web.
 7. Restart Home Assistant
-
-
 
 ## Entities
 
@@ -69,38 +64,17 @@ The integration provides the following entities:
 - Target Temperature
 - Electric Backup Usage
 
-### Numbers
-- Heat Curve S1 Outside Temperature
-- Heat Curve S1 Target Temperature
-- Heat Curve S2 Outside Temperature
-- Heat Curve S2 Target Temperature
-- Heat Curve Fixed Temperature
-- Heating Performance Backup Temperature
-- Cooling Temperature
 
-### Selects
-- Heat Curve Mode
-- Heating Kind
-- Heating Performance Mode
-- Sound Mode
-- Sound Compressor Power
-- Sound Fan Speed
-- Advanced Thermostat Delay
-- Backup Heating Mode
-- Cooling Thermostat Type
-- Cooling Control Mode
-
-### Switches
-- Boost Mode
+### Settings
+All settings that can be adjusted in web app or mobile app are availabe through this integration
 
 ## Troubleshooting
 
 If you encounter any issues:
 
 1. Check your credentials
-2. Verify your internet connection
 3. Check the Home Assistant logs
-4. [Open an issue](https://github.com/ronald-willems/dewarmte-homeassistant/issues) if needed
+3. [Open an issue](https://github.com/ronald-willems/dewarmte-homeassistant/issues) if needed
 
 ## Development
 

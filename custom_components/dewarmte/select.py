@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 from enum import Enum
 
 from homeassistant.components.select import (
@@ -72,10 +72,10 @@ class CoolingControlMode(str, Enum):
     HEATING_ONLY = "heating_only"
     FORCED = "forced"
 
-@dataclass
+@dataclass(frozen=True)
 class DeWarmteSelectEntityDescription(SelectEntityDescription):
     """Class describing DeWarmte select entities."""
-    options_enum: type = None
+    options_enum: type[Enum] | None = None
 
 MODE_SELECTS = {
     "heat_curve_mode": DeWarmteSelectEntityDescription(
@@ -152,17 +152,18 @@ async def async_setup_entry(
     entities = []
     for description in MODE_SELECTS.values():
         # Skip cooling entities if cooling is not supported
-        if description.key in SETTING_GROUPS["cooling"].keys and not coordinator.device.supports_cooling:
-            continue
+        if description.key in SETTING_GROUPS["cooling"].keys:
+            assert coordinator.device is not None, "Coordinator device must not be None"
+            if not coordinator.device.supports_cooling:
+                continue
         entities.append(DeWarmteSelectEntity(coordinator, description))
 
     async_add_entities(entities)
 
-class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SelectEntity):
+class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SelectEntity): # type: ignore[override]
     """Representation of a DeWarmte select entity."""
 
     _attr_has_entity_name = True
-    entity_description: DeWarmteSelectEntityDescription
 
     def __init__(
         self,
@@ -171,24 +172,31 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
     ) -> None:
         """Initialize the select entity."""
         super().__init__(coordinator)
+        assert coordinator.device is not None, "Coordinator device must not be None"
+        assert description.options is not None, "Select entity must have options"
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.device.device_id}_{description.key}"
         self._attr_device_info = coordinator.device_info
         self._attr_options = description.options
 
     @property
-    def current_option(self) -> str | None:
+    def dewarmte_description(self) -> DeWarmteSelectEntityDescription:
+        """Get the DeWarmte specific entity description."""
+        return cast(DeWarmteSelectEntityDescription, self.entity_description)
+
+    @property
+    def current_option(self) -> str | None:  # type: ignore[override]
         """Return the current selected option."""
         if not self.coordinator.api.operation_settings:
             return None
 
         settings = self.coordinator.api.operation_settings
-        key = self.entity_description.key
+        key = self.dewarmte_description.key
 
         # All settings are now at the root level
         return getattr(settings, key, None)
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
-        await self.coordinator.api.async_update_operation_settings(self.entity_description.key, option)
+        await self.coordinator.api.async_update_operation_settings(self.dewarmte_description.key, option)
         await self.coordinator.async_request_refresh() 

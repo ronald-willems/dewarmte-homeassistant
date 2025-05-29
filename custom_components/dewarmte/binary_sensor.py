@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
+from functools import cached_property
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -17,7 +18,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import _LOGGER, DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
 
-@dataclass
+@dataclass(frozen=True)
 class DeWarmteBinarySensorEntityDescription(BinarySensorEntityDescription):
     """Describes DeWarmte binary sensor entity."""
 
@@ -47,11 +48,11 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = 
     ),
 )
 
-class DeWarmteBinarySensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], BinarySensorEntity):
+class DeWarmteBinarySensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], BinarySensorEntity): # type: ignore[override]
     """Representation of a DeWarmte binary sensor."""
     _attr_has_entity_name = True
 
-    entity_description: DeWarmteBinarySensorEntityDescription
+    
 
     def __init__(
         self,
@@ -60,16 +61,21 @@ class DeWarmteBinarySensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Bin
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__(coordinator)
-
+        assert coordinator.device is not None, "Coordinator device must not be None"
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.device.device_id}_{description.key}"
         self._attr_device_info = coordinator.device_info
 
     @property
+    def dewarmte_description(self) -> DeWarmteBinarySensorEntityDescription:
+        """Get the DeWarmte specific entity description."""
+        return cast(DeWarmteBinarySensorEntityDescription, self.entity_description)
+
+    @cached_property
     def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
         if self.coordinator.data:
-            value = getattr(self.coordinator.data, self.entity_description.key, None)
+            value = getattr(self.coordinator.data, self.dewarmte_description.key, None)
             # Convert various possible values to boolean
             if value is None:
                 return None
