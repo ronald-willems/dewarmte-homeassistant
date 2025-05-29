@@ -182,6 +182,12 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
             max_sub_interval=timedelta(seconds=polling_interval * 3),
         )
         self._attr_device_info = source_sensor.coordinator.device_info
+        self._source_sensor = source_sensor
+
+    @property
+    def source_sensor(self) -> DeWarmteSensor:
+        """Return the source power sensor."""
+        return self._source_sensor
 
     @callback
     def async_reset(self) -> None:
@@ -211,7 +217,7 @@ class DeWarmteCoPSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sensor
         self._electrical_input_sensor = electrical_input_sensor
         assert coordinator.device is not None, "Coordinator device must not be None"
         self._attr_unique_id = f"{coordinator.device.device_id}_cop"
-        self._attr_name = "Coefficient of Performance"
+        self._attr_name = "CoP"
         self._attr_device_info = coordinator.device_info
 
     @property
@@ -228,13 +234,7 @@ class DeWarmteCoPSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sensor
 
         try:
             cop = float(heat_output) / float(electrical_input)
-            # Validate CoP is within reasonable bounds (1-5 for heat pumps)
-            if cop < 1.0 or cop > 7.0:
-                _LOGGER.warning(
-                    "Calculated CoP value %.2f is outside expected range (1.0-7.0). "
-                    "This might indicate sensor issues.",
-                    cop
-                )
+
             return round(cop, 2)
         except (TypeError, ValueError):
             _LOGGER.error("Failed to calculate CoP from values: heat_output=%s, electrical_input=%s",
@@ -244,9 +244,14 @@ class DeWarmteCoPSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sensor
     @property
     def extra_state_attributes(self) -> dict[str, Any]:  # type: ignore[override]
         """Return additional state attributes."""
+        # Convert Decimal values to float for JSON serialization
+        heat_output = self._heat_output_sensor.native_value
+        electrical_input = self._electrical_input_sensor.native_value
+        
         return {
-            "heat_output_kwh": self._heat_output_sensor.native_value,
-            "electrical_input_kwh": self._electrical_input_sensor.native_value,
+            # Current values
+            "heat_output_kwh": float(heat_output) if heat_output is not None else None,
+            "electrical_input_kwh": float(electrical_input) if electrical_input is not None else None,
             "last_updated": datetime.now().isoformat() if self.coordinator.data else None,
         }
 
@@ -264,7 +269,7 @@ async def async_setup_entry(
     async_add_entities(regular_sensors)
 
     # Wait for sensors to be registered; arbitrary number of seconds
-    await asyncio.sleep(5)
+    await asyncio.sleep(3)
 
     # Then create energy sensors for power sensors
     energy_sensors = []
@@ -280,21 +285,21 @@ async def async_setup_entry(
         async_add_entities(energy_sensors)
 
         # Wait for energy sensors to be registered
-        await asyncio.sleep(5)
+        await asyncio.sleep(3)
 
         # Find heat output and electrical input energy sensors
-     #   heat_output_sensor = next(
-     #       (s for s in energy_sensors if s.source_sensor.entity_description.key == "heat_output"),
-     #       None
-     #   )
-     #   electrical_input_sensor = next(
-     #       (s for s in energy_sensors if s.source_sensor.entity_description.key == "electricity_consumption"),
-     #       None
-     #   )
+        heat_output_sensor = next(
+            (s for s in energy_sensors if s.source_sensor.entity_description.key == "heat_output"),
+            None
+        )
+        electrical_input_sensor = next(
+            (s for s in energy_sensors if s.source_sensor.entity_description.key == "electricity_consumption"),
+            None
+        )
 
-     #   if heat_output_sensor and electrical_input_sensor:
+        if heat_output_sensor and electrical_input_sensor:
             # Create and add CoP sensor
-     #       cop_sensor = DeWarmteCoPSensor(coordinator, heat_output_sensor, electrical_input_sensor)
-     #       _LOGGER.debug("Adding CoP sensor")
-     #       async_add_entities([cop_sensor])
+            cop_sensor = DeWarmteCoPSensor(coordinator, heat_output_sensor, electrical_input_sensor)
+            _LOGGER.debug("Adding CoP sensor")
+            async_add_entities([cop_sensor])
 

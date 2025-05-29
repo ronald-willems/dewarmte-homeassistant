@@ -80,6 +80,8 @@ class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Swi
 
         return getattr(self.coordinator.api.operation_settings, self.dewarmte_description.key)
 
+    # the switch is not updated when the coordinator is updated due to the cached property
+    # this is a workaround to clear the cached property when the coordinator is updated
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         super()._handle_coordinator_update()
