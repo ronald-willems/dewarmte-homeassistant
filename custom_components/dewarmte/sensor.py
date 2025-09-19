@@ -172,6 +172,7 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
         polling_interval = source_sensor.coordinator.update_interval.total_seconds()
         
         super().__init__(
+            source_sensor.hass,
             source_entity=source_sensor.entity_id,
             name=f"{source_sensor.name} Energy",
             unique_id=f"{source_sensor.unique_id}_energy",
