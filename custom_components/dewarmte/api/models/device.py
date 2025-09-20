@@ -26,8 +26,12 @@ class Device:
     def info(self) -> DwDeviceInfo:
         """Return device information."""
         if not self._info:
+            # Extract device type from product_id (e.g., "AO A-492" -> "AO")
+            device_type = self.product_id.split()[0] if self.product_id else "Unknown"
+            
             self._info = DwDeviceInfo(
                 name=self.name or f"DeWarmte {self.product_id}",
+                model=device_type,  # Set model based on device type
             )
         return self._info
 

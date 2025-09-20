@@ -64,6 +64,7 @@ class DeWarmteApiClient:
                         device_id=product.get("id"),
                         product_id=f"{product_type} {product.get('name')}",
                         access_token=self._auth.access_token,  # Get token from auth object
+                        name=product.get("nickname"),  # Pass nickname for device name
                         supports_cooling=product.get("cooling", False),
                     )
                     devices.append(device)
