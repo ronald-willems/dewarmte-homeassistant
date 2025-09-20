@@ -24,27 +24,32 @@ class DeWarmteBinarySensorEntityDescription(BinarySensorEntityDescription):
 
     # Required fields (no default values)
     key: str
+    device_types: tuple[str, ...] = ("AO", "PT", "HC")  # Device types this sensor applies to
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = (
     DeWarmteBinarySensorEntityDescription(
         key="gas_boiler",
         name="Gas Boiler",
         device_class=BinarySensorDeviceClass.HEAT,
+        device_types=("AO",),  # AO-specific: gas boiler backup heating
     ),
     DeWarmteBinarySensorEntityDescription(
         key="thermostat",
         name="Thermostat",
         device_class=BinarySensorDeviceClass.HEAT,
+        device_types=("AO",),  # AO-specific: space heating thermostat
     ),
     DeWarmteBinarySensorEntityDescription(
         key="is_on",
         name="Is On",
         device_class=BinarySensorDeviceClass.POWER,
+        device_types=("AO", "PT"),  # AO/PT only: HC devices don't provide this field
     ),
     DeWarmteBinarySensorEntityDescription(
         key="is_connected",
         name="Is Connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        device_types=("AO", "PT"),  # AO/PT only: HC devices don't provide this field
     ),
 )
 
@@ -99,9 +104,22 @@ async def async_setup_entry(
         coordinators = [coordinators]
 
     for coordinator in coordinators:
+        # Get device type from the coordinator's device
+        device_type = coordinator.device.product_id.split()[0] if coordinator.device else "UNKNOWN"  # "AO", "PT", etc.
+        
+        # Filter binary sensor descriptions based on device type
+        filtered_descriptions = [
+            description for description in BINARY_SENSOR_DESCRIPTIONS
+            if device_type in description.device_types
+        ]
+        
+        # Create binary sensors per device with filtered descriptions
         binary_sensors = [
             DeWarmteBinarySensor(coordinator, description) 
-            for description in BINARY_SENSOR_DESCRIPTIONS
+            for description in filtered_descriptions
         ]
-        _LOGGER.debug("Adding %d binary sensors for device %s", len(binary_sensors), coordinator.device.device_id if coordinator.device else "unknown")
+        _LOGGER.debug("Adding %d binary sensors for device %s (type: %s)", 
+                     len(binary_sensors), 
+                     coordinator.device.device_id if coordinator.device else "unknown",
+                     device_type)
         async_add_entities(binary_sensors) 

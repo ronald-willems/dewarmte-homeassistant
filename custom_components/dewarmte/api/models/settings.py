@@ -62,7 +62,7 @@ class DeviceOperationSettings:
             heat_curve_s1_target_temp=float(data["heat_curve_s1_target_temp"]),
             heat_curve_s2_outside_temp=float(data["heat_curve_s2_outside_temp"]),
             heat_curve_s2_target_temp=float(data["heat_curve_s2_target_temp"]),
-            heat_curve_fixed_temperature=float(data["heat_curve_fixed_temperature"]),
+            heat_curve_fixed_temperature=float(data["heat_curve_fixed_temperature"]) if data["heat_curve_fixed_temperature"] is not None else 0.0,
             heat_curve_use_smart_correction=bool(data["heat_curve_use_smart_correction"]),
 
             # Other settings

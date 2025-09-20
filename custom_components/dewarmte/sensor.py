@@ -81,7 +81,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        device_types=("AO", "PT"),  # Common: heat input for both devices
+        device_types=("AO", "PT", "HC"),  # Common: heat input for all devices
     ),
     DeWarmteSensorEntityDescription(
         key="actual_temperature",
@@ -97,7 +97,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        device_types=("AO", "PT"),  # Common: electricity consumption for both
+        device_types=("AO", "PT", "HC"),  # Common: electricity consumption for all
     ),
     DeWarmteSensorEntityDescription(
         key="heat_output",
@@ -105,7 +105,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        device_types=("AO", "PT"),  # Common: heat output for both devices
+        device_types=("AO", "PT", "HC"),  # Common: heat output for all devices
     ),
     DeWarmteSensorEntityDescription(
         key="target_temperature",
@@ -130,7 +130,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=None,
         state_class=None,
         native_unit_of_measurement=None,
-        device_types=("AO", "PT"),  # Common: fault codes for both devices
+        device_types=("AO", "PT", "HC"),  # Common: fault codes for all devices
     ),
     # PT device specific sensors (DHW heat pump)
     DeWarmteSensorEntityDescription(
@@ -139,7 +139,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        device_types=("PT",),  # PT-specific: DHW boiler top temperature
+        device_types=("PT", "HC"),  # PT/HC-specific: boiler top temperature
     ),
     DeWarmteSensorEntityDescription(
         key="bottom_boiler_temp",
@@ -147,7 +147,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        device_types=("PT",),  # PT-specific: DHW boiler bottom temperature
+        device_types=("PT", "HC"),  # PT/HC-specific: boiler bottom temperature
     ),
 )
 
@@ -315,7 +315,7 @@ async def async_setup_entry(
         async_add_entities(regular_sensors)
 
         # Wait for sensors to be registered; arbitrary number of seconds
-        await asyncio.sleep(3)
+        await asyncio.sleep(2)
 
         # Then create energy sensors for power sensors per device
         energy_sensors = []
@@ -331,7 +331,7 @@ async def async_setup_entry(
             async_add_entities(energy_sensors)
 
             # Wait for energy sensors to be registered
-            await asyncio.sleep(3)
+            await asyncio.sleep(2)
 
             # Find heat output and electrical input energy sensors
             heat_output_sensor = next(
