@@ -19,6 +19,10 @@ class StatusData:
     is_on: bool
     fault_code: int
     is_connected: bool
+    
+    # PT device specific fields (DHW heat pump)
+    top_boiler_temp: float = 0.0
+    bottom_boiler_temp: float = 0.0
 
     @classmethod
     def from_dict(cls, data: dict) -> "StatusData":
@@ -37,5 +41,8 @@ class StatusData:
             electric_backup_usage=float(data.get("electric_backup_usage", 0)),
             is_on=bool(data.get("is_on", False)),
             fault_code=int(data.get("fault_code", 0)),
-            is_connected=bool(data.get("is_connected", False))
+            is_connected=bool(data.get("is_connected", False)),
+            # PT device specific fields
+            top_boiler_temp=float(data.get("top_boiler_temp", 0)),
+            bottom_boiler_temp=float(data.get("bottom_boiler_temp", 0)),
         ) 

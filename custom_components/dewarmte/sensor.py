@@ -121,6 +121,21 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         state_class=None,
         native_unit_of_measurement=None,
     ),
+    # PT device specific sensors (DHW heat pump)
+    DeWarmteSensorEntityDescription(
+        key="top_boiler_temp",
+        name="Top Boiler Temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+    ),
+    DeWarmteSensorEntityDescription(
+        key="bottom_boiler_temp",
+        name="Bottom Boiler Temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+    ),
 )
 
 @final

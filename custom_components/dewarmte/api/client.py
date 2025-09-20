@@ -58,7 +58,7 @@ class DeWarmteApiClient:
                 devices: list[Device] = []
                 for product in data.get("results", []):
                     product_type = product.get("type")
-                    if product_type not in ("AO", "T"):
+                    if product_type not in ("AO", "PT"):  # PT appears to be the T device type
                         continue
                     device = Device.from_api_response(
                         device_id=product.get("id"),
