@@ -46,6 +46,7 @@ class DeWarmteSensorEntityDescription(SensorEntityDescription):
     device_class: SensorDeviceClass | None = None
     state_class: SensorStateClass | None = None
     native_unit_of_measurement: str | None = None
+    device_types: tuple[str, ...] = ("AO", "PT")  # Device types this sensor applies to
     suggested_display_precision: int | None = None
 
 SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
@@ -56,6 +57,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
+        device_types=("AO",),  # AO-specific: circulation flow for space heating
     ),
     DeWarmteSensorEntityDescription(
         key="supply_temperature",
@@ -63,6 +65,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_types=("AO",),  # AO-specific: heating supply temperature
     ),
     DeWarmteSensorEntityDescription(
         key="outdoor_temperature",
@@ -70,6 +73,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_types=("AO",),  # AO-specific: outdoor sensor physically connected to AO device
     ),
     DeWarmteSensorEntityDescription(
         key="heat_input",
@@ -77,6 +81,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        device_types=("AO", "PT"),  # Common: heat input for both devices
     ),
     DeWarmteSensorEntityDescription(
         key="actual_temperature",
@@ -84,6 +89,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_types=("AO",),  # AO-specific: actual heating temperature
     ),
     DeWarmteSensorEntityDescription(
         key="electricity_consumption",
@@ -91,6 +97,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        device_types=("AO", "PT"),  # Common: electricity consumption for both
     ),
     DeWarmteSensorEntityDescription(
         key="heat_output",
@@ -98,6 +105,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        device_types=("AO", "PT"),  # Common: heat output for both devices
     ),
     DeWarmteSensorEntityDescription(
         key="target_temperature",
@@ -105,6 +113,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_types=("AO",),  # AO-specific: heating target temperature
     ),
     DeWarmteSensorEntityDescription(
         key="electric_backup_usage",
@@ -112,6 +121,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        device_types=("AO",),  # AO-specific: backup heating for space heating
     ),
     # Operational status sensors
     DeWarmteSensorEntityDescription(
@@ -120,6 +130,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=None,
         state_class=None,
         native_unit_of_measurement=None,
+        device_types=("AO", "PT"),  # Common: fault codes for both devices
     ),
     # PT device specific sensors (DHW heat pump)
     DeWarmteSensorEntityDescription(
@@ -128,6 +139,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_types=("PT",),  # PT-specific: DHW boiler top temperature
     ),
     DeWarmteSensorEntityDescription(
         key="bottom_boiler_temp",
@@ -135,6 +147,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_types=("PT",),  # PT-specific: DHW boiler bottom temperature
     ),
 )
 
@@ -284,9 +297,21 @@ async def async_setup_entry(
         coordinators = [coordinators]
 
     for coordinator in coordinators:
-        # First create regular sensors per device
-        regular_sensors = [DeWarmteSensor(coordinator, description) for description in SENSOR_DESCRIPTIONS]
-        _LOGGER.debug("Adding %d regular sensors for device %s", len(regular_sensors), coordinator.device.device_id if coordinator.device else "unknown")
+        # Get device type from the coordinator's device
+        device_type = coordinator.device.product_id.split()[0] if coordinator.device else "UNKNOWN"  # "AO", "PT", etc.
+        
+        # Filter sensor descriptions based on device type
+        filtered_descriptions = [
+            description for description in SENSOR_DESCRIPTIONS
+            if device_type in description.device_types
+        ]
+        
+        # Create regular sensors per device with filtered descriptions
+        regular_sensors = [DeWarmteSensor(coordinator, description) for description in filtered_descriptions]
+        _LOGGER.debug("Adding %d regular sensors for device %s (type: %s)", 
+                     len(regular_sensors), 
+                     coordinator.device.device_id if coordinator.device else "unknown",
+                     device_type)
         async_add_entities(regular_sensors)
 
         # Wait for sensors to be registered; arbitrary number of seconds
