@@ -63,6 +63,11 @@ class DeWarmteAuth:
             return None
 
     @property
+    def access_token(self) -> str | None:
+        """Get the current access token."""
+        return self._access_token
+
+    @property
     def headers(self) -> dict[str, str]:
         """Get the current headers."""
         return self._headers.copy()

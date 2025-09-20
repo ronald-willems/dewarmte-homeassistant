@@ -93,12 +93,15 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up DeWarmte binary sensors from a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinators = hass.data[DOMAIN][entry.entry_id]
 
-    binary_sensors = [
-        DeWarmteBinarySensor(coordinator, description) 
-        for description in BINARY_SENSOR_DESCRIPTIONS
-    ]
-    
-    _LOGGER.debug("Adding %d binary sensors", len(binary_sensors))
-    async_add_entities(binary_sensors) 
+    if not isinstance(coordinators, list):
+        coordinators = [coordinators]
+
+    for coordinator in coordinators:
+        binary_sensors = [
+            DeWarmteBinarySensor(coordinator, description) 
+            for description in BINARY_SENSOR_DESCRIPTIONS
+        ]
+        _LOGGER.debug("Adding %d binary sensors for device %s", len(binary_sensors), coordinator.device.device_id if coordinator.device else "unknown")
+        async_add_entities(binary_sensors) 

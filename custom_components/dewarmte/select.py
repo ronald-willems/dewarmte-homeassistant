@@ -146,19 +146,27 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the DeWarmte select entities."""
-    coordinator: DeWarmteDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinators = hass.data[DOMAIN][entry.entry_id]
 
-    # Filter out cooling entities if cooling is not supported
-    entities = []
-    for description in MODE_SELECTS.values():
-        # Skip cooling entities if cooling is not supported
-        if description.key in SETTING_GROUPS["cooling"].keys:
-            assert coordinator.device is not None, "Coordinator device must not be None"
-            if not coordinator.device.supports_cooling:
-                continue
-        entities.append(DeWarmteSelectEntity(coordinator, description))
+    if not isinstance(coordinators, list):
+        coordinators = [coordinators]
 
-    async_add_entities(entities)
+    for coordinator in coordinators:
+        # Only create select entities for AO devices (T devices have no settings)
+        if not coordinator.device.product_id.startswith("AO "):
+            continue
+            
+        # Filter out cooling entities if cooling is not supported
+        entities = []
+        for description in MODE_SELECTS.values():
+            # Skip cooling entities if cooling is not supported
+            if description.key in SETTING_GROUPS["cooling"].keys:
+                assert coordinator.device is not None, "Coordinator device must not be None"
+                if not coordinator.device.supports_cooling:
+                    continue
+            entities.append(DeWarmteSelectEntity(coordinator, description))
+
+        async_add_entities(entities)
 
 class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SelectEntity): # type: ignore[override]
     """Representation of a DeWarmte select entity."""
@@ -187,10 +195,11 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
     @property
     def current_option(self) -> str | None:  # type: ignore[override]
         """Return the current selected option."""
-        if not self.coordinator.api.operation_settings:
+        # Settings are cached in coordinator, read from there
+        if not hasattr(self.coordinator, '_cached_settings') or not self.coordinator._cached_settings:
             return None
 
-        settings = self.coordinator.api.operation_settings
+        settings = self.coordinator._cached_settings
         key = self.dewarmte_description.key
 
         # All settings are now at the root level
@@ -198,5 +207,5 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
-        await self.coordinator.api.async_update_operation_settings(self.dewarmte_description.key, option)
+        await self.coordinator.api.async_update_operation_settings(self.coordinator.device, self.dewarmte_description.key, option)
         await self.coordinator.async_request_refresh() 

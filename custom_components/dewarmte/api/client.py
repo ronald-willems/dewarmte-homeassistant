@@ -24,25 +24,24 @@ class DeWarmteApiClient:
         self._session = session
         self._base_url = "https://api.mydewarmte.com/v1"
         self._auth = DeWarmteAuth(connection_settings.username, connection_settings.password, session)
-        self._device: Device | None = None
-        self._operation_settings: DeviceOperationSettings | None = None
-
-    @property
-    def device(self) -> Device | None:
-        """Return the current device."""
-        return self._device
-
-    @property
-    def operation_settings(self) -> DeviceOperationSettings | None:
-        """Return the current operation settings."""
-        return self._operation_settings
+        self._is_logged_in = False
 
     async def async_login(self) -> bool:
-        """Login to the API and get device info."""
-        # Get access token
+        """Login to the API."""
+        if self._is_logged_in:
+            return True
+            
         token = await self._auth.login()
-        if not token:
-            return False
+        if token:
+            self._is_logged_in = True
+            return True
+        return False
+
+    async def async_discover_devices(self) -> list[Device]:
+        """Discover all supported devices from the API."""
+        # Ensure we're logged in
+        if not await self.async_login():
+            return []
 
         try:
             # Get device info
@@ -51,38 +50,36 @@ class DeWarmteApiClient:
             async with self._session.get(products_url, headers=self._auth.headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to get products info: %d", response.status)
-                    return False
+                    return []
                 data = await response.json()
                 _LOGGER.debug("Products data: %s", data)
                 
-                # Find AO device
-                ao_product = next((p for p in data.get("results", []) if p.get("type") == "AO"), None)
-                if not ao_product:
-                    _LOGGER.error("No product found with type='AO'")
-                    return False
+                # Build device list for supported types (AO and T)
+                devices: list[Device] = []
+                for product in data.get("results", []):
+                    product_type = product.get("type")
+                    if product_type not in ("AO", "T"):
+                        continue
+                    device = Device.from_api_response(
+                        device_id=product.get("id"),
+                        product_id=f"{product_type} {product.get('name')}",
+                        access_token=self._auth.access_token,  # Get token from auth object
+                        supports_cooling=product.get("cooling", False),
+                    )
+                    devices.append(device)
 
-                # Create device
-                self._device = Device.from_api_response(
-                    device_id=ao_product["id"],
-                    product_id=f"AO {ao_product['name']}",
-                    access_token=token,
-                    supports_cooling=ao_product.get("cooling", False)
-                )
-                _LOGGER.debug("Found AO device ID: %s, product ID: %s, cooling support: %s", 
-                            self._device.device_id, self._device.product_id, self._device.supports_cooling)
-                
-                # Get initial settings
-                await self.async_get_operation_settings()
-                return True
+                _LOGGER.debug("Discovered devices: %s", [d.device_id for d in devices])
+                return devices
 
         except Exception as err:
             _LOGGER.error("Error getting device info: %s", str(err))
-            return False
+            return []
 
-    async def async_get_status_data(self) -> StatusData | None:
-        """Get status data from the API."""
-        if not self._device:
-            _LOGGER.error("No device available")
+    async def async_get_status_data(self, device: Device) -> StatusData | None:
+        """Get status data from the API for a specific device."""
+        # Ensure we're logged in
+        if not await self.async_login():
+            _LOGGER.error("Failed to login")
             return None
 
         try:
@@ -92,13 +89,15 @@ class DeWarmteApiClient:
             async with self._session.get(products_url, headers=self._auth.headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to get status data: %d", response.status)
+                    if response.status == 401:  # Unauthorized - token expired
+                        self._is_logged_in = False
                     return None
                 data = await response.json()
                 _LOGGER.debug("Products data: %s", data)
                 
                 # Find our device in the results
                 for product in data.get("results", []):
-                    if product.get("id") == self._device.device_id:
+                    if product.get("id") == device.device_id:
                         # Create StatusData from the product data
                         status_data = StatusData.from_dict({**product, **product.get("status", {})})
                         
@@ -114,39 +113,43 @@ class DeWarmteApiClient:
                         
                         return status_data
                 
-                _LOGGER.error("Device not found in products response")
+                _LOGGER.error("Device %s not found in products response", device.device_id)
                 return None
         except Exception as err:
             _LOGGER.error("Error getting status data: %s", str(err))
             return None
 
-    async def async_get_operation_settings(self) -> DeviceOperationSettings | None:
-        """Get operation settings from the API."""
-        if not self._device:
-            _LOGGER.error("No device available")
+    async def async_get_operation_settings(self, device: Device) -> DeviceOperationSettings | None:
+        """Get operation settings from the API for a specific device."""
+        # Ensure we're logged in
+        if not await self.async_login():
+            _LOGGER.error("Failed to login")
             return None
 
         try:
-            settings_url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/"
+            settings_url = f"{self._base_url}/customer/products/{device.device_id}/settings/"
             _LOGGER.debug("Making GET request to %s", settings_url)
             async with self._session.get(settings_url, headers=self._auth.headers) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to get operation settings: %d", response.status)
+                    if response.status == 401:  # Unauthorized - token expired
+                        self._is_logged_in = False
                     return None
                 data = await response.json()
                 _LOGGER.debug("Operation settings data: %s", data)
                 
-                self._operation_settings = DeviceOperationSettings.from_api_response(data)
-                return self._operation_settings
+                settings = DeviceOperationSettings.from_api_response(data)
+                return settings
                 
         except Exception as err:
             _LOGGER.error("Error getting operation settings: %s", str(err))
             return None
 
-    async def async_update_operation_settings(self, key: str, value: Union[float, str, int, bool]) -> None:
-        """Update a single operation setting."""
-        if not self._device:
-            raise ValueError("No device selected")
+    async def async_update_operation_settings(self, device: Device, key: str, value: Union[float, str, int, bool]) -> None:
+        """Update a single operation setting for a specific device."""
+        # Ensure we're logged in
+        if not await self.async_login():
+            raise ValueError("Failed to login")
 
         _LOGGER.debug("Updating operation setting %s to %s", key, value)
 
@@ -154,9 +157,7 @@ class DeWarmteApiClient:
         for group in SETTING_GROUPS.values():
             if key in group.keys:
                 _LOGGER.debug("Found setting group %s for key %s", group.endpoint, key)
-                await self._update_settings(group, key, value)
-                # Refresh settings after update
-                await self.async_get_operation_settings()
+                await self._update_settings(device, group, key, value)
                 return
 
         raise ValueError(
@@ -164,13 +165,12 @@ class DeWarmteApiClient:
             "Please report this as a bug."
         )
 
-    async def _update_settings(self, group: SettingsGroup, key: str, value: Any) -> None:
-        """Common logic for updating settings."""
-        assert self._device is not None, "Device must be available to update settings"
-        url = f"{self._base_url}/customer/products/{self._device.device_id}/settings/{group.endpoint}/"
+    async def _update_settings(self, device: Device, group: SettingsGroup, key: str, value: Any) -> None:
+        """Common logic for updating settings for a specific device."""
+        url = f"{self._base_url}/customer/products/{device.device_id}/settings/{group.endpoint}/"
         
         # Get current settings
-        current_settings = await self.async_get_operation_settings()
+        current_settings = await self.async_get_operation_settings(device)
         if not current_settings:
             raise ValueError("Could not get current settings")
         
@@ -203,6 +203,8 @@ class DeWarmteApiClient:
                     response_text = await response.text()
                     _LOGGER.error("Failed to update %s settings: %d", group.endpoint, response.status)
                     _LOGGER.error("Response: %s", response_text)
+                    if response.status == 401:  # Unauthorized - token expired
+                        self._is_logged_in = False
                     raise ValueError(f"Failed to update {group.endpoint} settings: {response.status}")
                 response_data = await response.json()
                 _LOGGER.debug("%s settings update response: %s", group.endpoint, response_data)

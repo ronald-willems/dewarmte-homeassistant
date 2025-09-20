@@ -110,19 +110,27 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the DeWarmte number entities."""
-    coordinator: DeWarmteDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinators = hass.data[DOMAIN][entry.entry_id]
 
-    # Filter out cooling entities if cooling is not supported
-    entities = []
-    for description in TEMPERATURE_NUMBERS.values():
-        # Skip cooling entities if cooling is not supported
-        if description.key in SETTING_GROUPS["cooling"].keys:
-            assert coordinator.device is not None, "Coordinator device must not be None"
-            if not coordinator.device.supports_cooling:
-                continue
-        entities.append(DeWarmteNumberEntity(coordinator, description))
+    if not isinstance(coordinators, list):
+        coordinators = [coordinators]
 
-    async_add_entities(entities)
+    for coordinator in coordinators:
+        # Only create number entities for AO devices (T devices have no settings)
+        if not coordinator.device.product_id.startswith("AO "):
+            continue
+            
+        # Filter out cooling entities if cooling is not supported
+        entities = []
+        for description in TEMPERATURE_NUMBERS.values():
+            # Skip cooling entities if cooling is not supported
+            if description.key in SETTING_GROUPS["cooling"].keys:
+                assert coordinator.device is not None, "Coordinator device must not be None"
+                if not coordinator.device.supports_cooling:
+                    continue
+            entities.append(DeWarmteNumberEntity(coordinator, description))
+
+        async_add_entities(entities)
 
 class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], NumberEntity): # type: ignore[override]
     """Representation of a DeWarmte number entity."""
@@ -146,13 +154,14 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
         """Get the DeWarmte specific entity description."""
         return cast(DeWarmteNumberEntityDescription, self.entity_description)
 
-    @cached_property
+    @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        if not self.coordinator.api.operation_settings:
+        # Settings are cached in coordinator, read from there
+        if not hasattr(self.coordinator, '_cached_settings'):
             return None
-
-        settings = self.coordinator.api.operation_settings
+            
+        settings = self.coordinator._cached_settings
         key = self.dewarmte_description.key
 
         # Get the raw value and ensure it's a float
@@ -167,5 +176,5 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
-        await self.coordinator.api.async_update_operation_settings(self.dewarmte_description.key, value)
+        await self.coordinator.api.async_update_operation_settings(self.coordinator.device, self.dewarmte_description.key, value)
         await self.coordinator.async_request_refresh() 

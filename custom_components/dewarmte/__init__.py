@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -53,24 +53,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             session=session,
         )
 
-        # Try to login first
-        if not await client.async_login():
-            raise ConfigEntryNotReady("Failed to log in to DeWarmte")
+        # Discover devices (this also handles login)
+        devices = await client.async_discover_devices()
+        if not devices:
+            raise ConfigEntryNotReady("No devices discovered")
 
-        # Create coordinator
-        coordinator = DeWarmteDataUpdateCoordinator(
-            hass,
-            client,
-            update_interval=timedelta(seconds=connection_settings.update_interval)
-        )
+        # Create coordinators for all discovered devices
+        coordinators: List[DeWarmteDataUpdateCoordinator] = []
+        for device in devices:
+            coordinator = DeWarmteDataUpdateCoordinator(
+                hass,
+                client,
+                device,
+                update_interval=timedelta(seconds=connection_settings.update_interval)
+            )
+            await coordinator.async_config_entry_first_refresh()
+            if not coordinator.last_update_success:
+                raise ConfigEntryNotReady("Failed to fetch initial data for device")
+            coordinators.append(coordinator)
 
-        # Fetch initial data
-        await coordinator.async_config_entry_first_refresh()
-
-        if not coordinator.last_update_success:
-            raise ConfigEntryNotReady("Failed to fetch initial data")
-
-        hass.data[DOMAIN][entry.entry_id] = coordinator
+        hass.data[DOMAIN][entry.entry_id] = coordinators
 
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -93,6 +95,7 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
         self,
         hass: HomeAssistant,
         api: DeWarmteApiClient,
+        device: Device,
         update_interval: timedelta = timedelta(seconds=60)
     ) -> None:
         """Initialize."""
@@ -103,26 +106,28 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
             update_interval=update_interval,
         )
         self.api = api
+        self._device = device
 
     @property
     def device(self) -> Optional[Device]:
         """Get the current device."""
-        return self.api.device
+        return self._device
 
     async def _async_update_data(self) -> StatusData:
         """Update data via library."""
         try:
-            # First ensure we're logged in
-            if not await self.api.async_login():
-                raise UpdateFailed("Failed to log in to DeWarmte")
-
-            # Get status data
-            status_data = await self.api.async_get_status_data()
+            # First ensure we're logged in by attempting to get status data
+            # This will trigger login if needed
+            status_data = await self.api.async_get_status_data(self.device)
             if not status_data:
                 raise UpdateFailed("Failed to get status data")
 
             # Get operation settings (needed for number and select entities)
-            await self.api.async_get_operation_settings()
+            # Only fetch settings for AO devices (T devices have no settings)
+            if self.device.product_id.startswith("AO "):
+                self._cached_settings = await self.api.async_get_operation_settings(self.device)
+            else:
+                self._cached_settings = None
 
             return status_data
 

@@ -39,15 +39,23 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the DeWarmte switch platform."""
-    coordinator: DeWarmteDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinators = hass.data[DOMAIN][entry.entry_id]
     _LOGGER.debug("Setting up DeWarmte switch platform")
 
-    entities = []
-    for setting_id, description in SWITCH_DESCRIPTIONS.items():
-        if coordinator.api.operation_settings is not None:
-            entities.append(DeWarmteSwitchEntity(coordinator, description))
+    if not isinstance(coordinators, list):
+        coordinators = [coordinators]
 
-    async_add_entities(entities)
+    for coordinator in coordinators:
+        # Only create switch entities for AO devices (T devices have no settings)
+        if not coordinator.device.product_id.startswith("AO "):
+            continue
+            
+        entities = []
+        for setting_id, description in SWITCH_DESCRIPTIONS.items():
+            if hasattr(coordinator, '_cached_settings') and coordinator._cached_settings is not None:
+                entities.append(DeWarmteSwitchEntity(coordinator, description))
+
+        async_add_entities(entities)
 
 @final
 class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEntity):  # type: ignore[override]
@@ -75,10 +83,12 @@ class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Swi
     @cached_property
     def is_on(self) -> bool | None:
         """Return true if the switch is on."""
-        if not self.coordinator.api.operation_settings:
+        # Settings are cached in coordinator, read from there
+        if not hasattr(self.coordinator, '_cached_settings') or not self.coordinator._cached_settings:
             return None
 
-        return getattr(self.coordinator.api.operation_settings, self.dewarmte_description.key)
+        settings = self.coordinator._cached_settings
+        return getattr(settings, self.dewarmte_description.key) if settings else None
 
     # the switch is not updated when the coordinator is updated due to the cached property
     # this is a workaround to clear the cached property when the coordinator is updated
@@ -92,11 +102,11 @@ class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Swi
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the entity on."""
 
-        await self.coordinator.api.async_update_operation_settings(self.dewarmte_description.key, True)
+        await self.coordinator.api.async_update_operation_settings(self.coordinator.device, self.dewarmte_description.key, True)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
 
-        await self.coordinator.api.async_update_operation_settings(self.dewarmte_description.key, False)
+        await self.coordinator.api.async_update_operation_settings(self.coordinator.device, self.dewarmte_description.key, False)
         await self.coordinator.async_request_refresh() 

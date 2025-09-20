@@ -262,45 +262,50 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up DeWarmte sensors from a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinators = hass.data[DOMAIN][entry.entry_id]
 
-    # First create regular sensors
-    regular_sensors = [DeWarmteSensor(coordinator, description) for description in SENSOR_DESCRIPTIONS]
-    _LOGGER.debug("Adding %d regular sensors", len(regular_sensors))
-    async_add_entities(regular_sensors)
+    # Support both a single coordinator and a list for backward compatibility
+    if not isinstance(coordinators, list):
+        coordinators = [coordinators]
 
-    # Wait for sensors to be registered; arbitrary number of seconds
-    await asyncio.sleep(3)
+    for coordinator in coordinators:
+        # First create regular sensors per device
+        regular_sensors = [DeWarmteSensor(coordinator, description) for description in SENSOR_DESCRIPTIONS]
+        _LOGGER.debug("Adding %d regular sensors for device %s", len(regular_sensors), coordinator.device.device_id if coordinator.device else "unknown")
+        async_add_entities(regular_sensors)
 
-    # Then create energy sensors for power sensors
-    energy_sensors = []
-    for sensor in regular_sensors:
-        if sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT:
-            _LOGGER.debug("Creating energy sensor for power sensor: %s", sensor.name)
-            energy_sensor = DeWarmteEnergyIntegrationSensor(sensor)
-            energy_sensors.append(energy_sensor)
-    
-    # Add energy sensors
-    if energy_sensors:
-        _LOGGER.debug("Adding %d energy sensors", len(energy_sensors))
-        async_add_entities(energy_sensors)
-
-        # Wait for energy sensors to be registered
+        # Wait for sensors to be registered; arbitrary number of seconds
         await asyncio.sleep(3)
 
-        # Find heat output and electrical input energy sensors
-        heat_output_sensor = next(
-            (s for s in energy_sensors if s.source_sensor.entity_description.key == "heat_output"),
-            None
-        )
-        electrical_input_sensor = next(
-            (s for s in energy_sensors if s.source_sensor.entity_description.key == "electricity_consumption"),
-            None
-        )
+        # Then create energy sensors for power sensors per device
+        energy_sensors = []
+        for sensor in regular_sensors:
+            if sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT:
+                _LOGGER.debug("Creating energy sensor for power sensor: %s", sensor.name)
+                energy_sensor = DeWarmteEnergyIntegrationSensor(sensor)
+                energy_sensors.append(energy_sensor)
+        
+        # Add energy sensors
+        if energy_sensors:
+            _LOGGER.debug("Adding %d energy sensors for device %s", len(energy_sensors), coordinator.device.device_id if coordinator.device else "unknown")
+            async_add_entities(energy_sensors)
 
-        if heat_output_sensor and electrical_input_sensor:
-            # Create and add CoP sensor
-            cop_sensor = DeWarmteCoPSensor(coordinator, heat_output_sensor, electrical_input_sensor)
-            _LOGGER.debug("Adding CoP sensor")
-            async_add_entities([cop_sensor])
+            # Wait for energy sensors to be registered
+            await asyncio.sleep(3)
+
+            # Find heat output and electrical input energy sensors
+            heat_output_sensor = next(
+                (s for s in energy_sensors if s.source_sensor.entity_description.key == "heat_output"),
+                None
+            )
+            electrical_input_sensor = next(
+                (s for s in energy_sensors if s.source_sensor.entity_description.key == "electricity_consumption"),
+                None
+            )
+
+            if heat_output_sensor and electrical_input_sensor:
+                # Create and add CoP sensor
+                cop_sensor = DeWarmteCoPSensor(coordinator, heat_output_sensor, electrical_input_sensor)
+                _LOGGER.debug("Adding CoP sensor for device %s", coordinator.device.device_id if coordinator.device else "unknown")
+                async_add_entities([cop_sensor])
 

@@ -1,0 +1,174 @@
+@startuml DeWarmteIntegrationClasses
+title DeWarmte Home Assistant Integration - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package "custom_components.dewarmte" {
+  class DeWarmteDataUpdateCoordinator {
+    +api: DeWarmteApiClient
+    +device(): Device | None
+    +device_info: DeviceInfo
+    +_async_update_data(): StatusData
+  }
+
+  class DeWarmteSensor {
+    +entity_description: DeWarmteSensorEntityDescription
+    +native_value: StateType
+  }
+
+  class DeWarmteEnergyIntegrationSensor {
+    +source_sensor: DeWarmteSensor
+    +async_reset(): void
+  }
+
+  class DeWarmteCoPSensor {
+    +native_value: float | None
+  }
+
+  class DeWarmteBinarySensor {
+    +is_on: bool | None
+  }
+
+  class DeWarmteNumberEntity {
+    +native_value: float | None
+    +async_set_native_value(value: float): void
+  }
+
+  class DeWarmteSelectEntity {
+    +current_option: str | None
+    +async_select_option(option: str): void
+  }
+
+  class DeWarmteSwitchEntity {
+    +is_on: bool | None
+    +async_turn_on(): void
+    +async_turn_off(): void
+  }
+}
+
+package "custom_components.dewarmte.api" {
+  class DeWarmteApiClient {
+    -_settings: ConnectionSettings
+    -_session: aiohttp.ClientSession
+    -_auth: DeWarmteAuth
+    -_base_url: str
+    -_device: Device | None
+    -_operation_settings: DeviceOperationSettings | None
+    +device(): Device | None
+    +operation_settings(): DeviceOperationSettings | None
+    +async_login(): bool
+    +async_get_status_data(): StatusData | None
+    +async_get_operation_settings(): DeviceOperationSettings | None
+    +async_update_operation_settings(key, value): None
+  }
+
+  class DeWarmteAuth {
+    -_username: str
+    -_password: str
+    -_session: aiohttp.ClientSession
+    +headers: dict
+    +login(): str | None
+  }
+}
+
+package "custom_components.dewarmte.api.models" {
+  class Device {
+    +device_id: str
+    +product_id: str
+    +access_token: str
+    +name: str | None
+    +supports_cooling: bool
+    +info: DwDeviceInfo
+    +from_api_response(...): Device
+  }
+
+  class DwDeviceInfo {
+    +name: str
+    +manufacturer: str
+    +model: str
+    +sw_version: str
+    +hw_version: str
+  }
+
+  class StatusData {
+    +water_flow: float
+    +supply_temperature: float
+    +outdoor_temperature: float
+    +heat_input: float
+    +actual_temperature: float
+    +electricity_consumption: float
+    +heat_output: float
+    +gas_boiler: bool
+    +thermostat: bool
+    +target_temperature: float
+    +electric_backup_usage: float
+    +is_on: bool
+    +fault_code: int
+    +is_connected: bool
+    +from_dict(data): StatusData
+  }
+
+  class DeviceOperationSettings {
+    .. multiple fields mapped from API ..
+    +from_api_response(data): DeviceOperationSettings
+  }
+
+  class SettingsGroup {
+    +endpoint: str
+    +keys: list[str]
+  }
+}
+
+package "custom_components.dewarmte.api.models.config" {
+  class ConnectionSettings {
+    +username: str
+    +password: str
+    +update_interval: int
+  }
+}
+
+package "Home Assistant" {
+  class DataUpdateCoordinator<T>
+  class SensorEntity
+  class BinarySensorEntity
+  class NumberEntity
+  class SelectEntity
+  class SwitchEntity
+  class DeviceInfo
+}
+
+' Inheritance/realization from HA base classes
+DeWarmteDataUpdateCoordinator --> DataUpdateCoordinator
+DeWarmteSensor --> SensorEntity
+DeWarmteEnergyIntegrationSensor --> SensorEntity
+DeWarmteCoPSensor --> SensorEntity
+DeWarmteBinarySensor --> BinarySensorEntity
+DeWarmteNumberEntity --> NumberEntity
+DeWarmteSelectEntity --> SelectEntity
+DeWarmteSwitchEntity --> SwitchEntity
+
+' Relationships inside integration
+DeWarmteDataUpdateCoordinator --> DeWarmteApiClient : uses
+DeWarmteDataUpdateCoordinator --> Device : exposes
+DeWarmteDataUpdateCoordinator --> StatusData : provides
+DeWarmteDataUpdateCoordinator --> DeviceInfo : provides
+
+DeWarmteApiClient --> DeWarmteAuth : uses
+DeWarmteApiClient --> Device : manages current
+DeWarmteApiClient --> StatusData : returns
+DeWarmteApiClient --> DeviceOperationSettings : returns
+DeWarmteApiClient --> SettingsGroup : updates via
+
+Device --> DwDeviceInfo : has
+
+DeWarmteSensor --> DeWarmteDataUpdateCoordinator : reads data
+DeWarmteEnergyIntegrationSensor --> DeWarmteSensor : integrates power to energy
+DeWarmteCoPSensor --> DeWarmteEnergyIntegrationSensor : reads heat/electric energy
+DeWarmteBinarySensor --> DeWarmteDataUpdateCoordinator : reads data
+DeWarmteNumberEntity --> DeWarmteDataUpdateCoordinator : reads/updates settings
+DeWarmteSelectEntity --> DeWarmteDataUpdateCoordinator : reads/updates settings
+DeWarmteSwitchEntity --> DeWarmteDataUpdateCoordinator : reads/updates settings
+
+@enduml
+
