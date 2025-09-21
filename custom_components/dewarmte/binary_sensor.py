@@ -42,7 +42,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = 
     DeWarmteBinarySensorEntityDescription(
         key="is_on",
         name="Is On",
-        device_class=BinarySensorDeviceClass.POWER,
+        device_class=BinarySensorDeviceClass.RUNNING,
         device_types=("AO", "PT"),  # AO/PT only: HC devices don't provide this field
     ),
     DeWarmteBinarySensorEntityDescription(
