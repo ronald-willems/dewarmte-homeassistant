@@ -104,13 +104,10 @@ async def async_setup_entry(
         coordinators = [coordinators]
 
     for coordinator in coordinators:
-        # Get device type from the coordinator's device
-        device_type = coordinator.device.product_id.split()[0] if coordinator.device else "UNKNOWN"  # "AO", "PT", etc.
-        
         # Filter binary sensor descriptions based on device type
         filtered_descriptions = [
             description for description in BINARY_SENSOR_DESCRIPTIONS
-            if device_type in description.device_types
+            if coordinator.device.device_type in description.device_types
         ]
         
         # Create binary sensors per device with filtered descriptions
@@ -118,8 +115,8 @@ async def async_setup_entry(
             DeWarmteBinarySensor(coordinator, description) 
             for description in filtered_descriptions
         ]
-        _LOGGER.debug("Adding %d binary sensors for device %s (type: %s)", 
-                     len(binary_sensors), 
+        _LOGGER.debug("Adding %d binary sensors for device %s (type: %s)",
+                     len(binary_sensors),
                      coordinator.device.device_id if coordinator.device else "unknown",
-                     device_type)
+                     coordinator.device.device_type)
         async_add_entities(binary_sensors) 

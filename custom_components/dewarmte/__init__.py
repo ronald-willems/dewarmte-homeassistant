@@ -122,9 +122,9 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
             if not status_data:
                 raise UpdateFailed("Failed to get status data")
 
-            # Get operation settings (needed for number and select entities)
-            # Only fetch settings for AO devices (T devices have no settings)
-            if self.device.product_id.startswith("AO "):
+            # Get operation settings (needed for number, select, and switch entities)
+            # Fetch settings for AO and PT devices (HC devices have no settings)
+            if self.device.product_id.startswith(("AO ", "PT ")):
                 self._cached_settings = await self.api.async_get_operation_settings(self.device)
             else:
                 self._cached_settings = None

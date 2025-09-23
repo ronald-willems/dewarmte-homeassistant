@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DeWarmteDataUpdateCoordinator
+from . import DeWarmteDataUpdateCoordinator, _LOGGER
 from .const import DOMAIN
 from .api.models.settings import SETTING_GROUPS
 
@@ -36,8 +36,14 @@ MAX_COOLING_DURATION = 259200  # 3 days in seconds
 @dataclass(frozen=True)
 class DeWarmteNumberEntityDescription(NumberEntityDescription):
     """Class describing DeWarmte number entities."""
+    device_types: tuple[str, ...] = ("AO", "PT", "HC")  # Device types this number applies to
 
-TEMPERATURE_NUMBERS = {
+# Warm water temperature constants
+MIN_WARM_WATER_TEMP = 40.0
+MAX_WARM_WATER_TEMP = 70.0
+
+# All number entity descriptions
+NUMBER_DESCRIPTIONS = {
     "heat_curve_s1_outside_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s1_outside_temp",
         name="Heat Curve S1 Outside Temperature",
@@ -45,6 +51,7 @@ TEMPERATURE_NUMBERS = {
         native_min_value=MIN_OUTSIDE_TEMP,
         native_max_value=MAX_OUTSIDE_TEMP,
         native_step=1.0,
+        device_types=("AO",),  # AO-specific: heat curve settings for space heating
     ),
     "heat_curve_s1_target_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s1_target_temp",
@@ -53,6 +60,7 @@ TEMPERATURE_NUMBERS = {
         native_min_value=MIN_TARGET_TEMP,
         native_max_value=MAX_TARGET_TEMP,
         native_step=1.0,
+        device_types=("AO",),  # AO-specific: heat curve settings for space heating
     ),
     "heat_curve_s2_outside_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s2_outside_temp",
@@ -61,6 +69,7 @@ TEMPERATURE_NUMBERS = {
         native_min_value=MIN_OUTSIDE_TEMP,
         native_max_value=MAX_OUTSIDE_TEMP,
         native_step=1.0,
+        device_types=("AO",),  # AO-specific: heat curve settings for space heating
     ),
     "heat_curve_s2_target_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s2_target_temp",
@@ -69,6 +78,7 @@ TEMPERATURE_NUMBERS = {
         native_min_value=MIN_TARGET_TEMP,
         native_max_value=MAX_TARGET_TEMP,
         native_step=1.0,
+        device_types=("AO",),  # AO-specific: heat curve settings for space heating
     ),
     "heat_curve_fixed_temperature": DeWarmteNumberEntityDescription(
         key="heat_curve_fixed_temperature",
@@ -77,6 +87,7 @@ TEMPERATURE_NUMBERS = {
         native_min_value=MIN_TARGET_TEMP,
         native_max_value=MAX_TARGET_TEMP,
         native_step=1.0,
+        device_types=("AO",),  # AO-specific: heat curve settings for space heating
     ),
     "heating_performance_backup_temperature": DeWarmteNumberEntityDescription(
         key="heating_performance_backup_temperature",
@@ -85,6 +96,7 @@ TEMPERATURE_NUMBERS = {
         native_min_value=MIN_BACKUP_TEMP,
         native_max_value=MAX_BACKUP_TEMP,
         native_step=1.0,
+        device_types=("AO",),  # AO-specific: heating performance settings for space heating
     ),
     "cooling_temperature": DeWarmteNumberEntityDescription(
         key="cooling_temperature",
@@ -93,6 +105,7 @@ TEMPERATURE_NUMBERS = {
         native_min_value=MIN_COOLING_TEMP,
         native_max_value=MAX_COOLING_TEMP,
         native_step=1.0,
+        device_types=("AO",),  # AO-specific: cooling settings for space heating
     ),
     "cooling_duration": DeWarmteNumberEntityDescription(
         key="cooling_duration",
@@ -101,6 +114,16 @@ TEMPERATURE_NUMBERS = {
         native_min_value=MIN_COOLING_DURATION,
         native_max_value=MAX_COOLING_DURATION,
         native_step=1.0,
+        device_types=("AO",),  # AO-specific: cooling settings for space heating
+    ),
+    "warm_water_target_temperature": DeWarmteNumberEntityDescription(
+        key="warm_water_target_temperature",
+        name="Warm Water Target Temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=MIN_WARM_WATER_TEMP,
+        native_max_value=MAX_WARM_WATER_TEMP,
+        native_step=1.0,
+        device_types=("PT",),  # PT-specific: warm water temperature settings for heat pumps
     ),
 }
 
@@ -116,13 +139,16 @@ async def async_setup_entry(
         coordinators = [coordinators]
 
     for coordinator in coordinators:
-        # Only create number entities for AO devices (T devices have no settings)
-        if not coordinator.device.product_id.startswith("AO "):
-            continue
-            
-        # Filter out cooling entities if cooling is not supported
         entities = []
-        for description in TEMPERATURE_NUMBERS.values():
+        
+        # Filter descriptions by device type
+        filtered_descriptions = [
+            description for description in NUMBER_DESCRIPTIONS.values()
+            if coordinator.device.device_type in description.device_types
+        ]
+        
+        # Add entities for filtered descriptions
+        for description in filtered_descriptions:
             # Skip cooling entities if cooling is not supported
             if description.key in SETTING_GROUPS["cooling"].keys:
                 assert coordinator.device is not None, "Coordinator device must not be None"
@@ -130,7 +156,13 @@ async def async_setup_entry(
                     continue
             entities.append(DeWarmteNumberEntity(coordinator, description))
 
-        async_add_entities(entities)
+        _LOGGER.debug("Adding %d number entities for device %s (type: %s)",
+                     len(entities),
+                     coordinator.device.device_id if coordinator.device else "unknown",
+                     coordinator.device.device_type)
+        
+        if entities:
+            async_add_entities(entities)
 
 class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], NumberEntity): # type: ignore[override]
     """Representation of a DeWarmte number entity."""
@@ -176,5 +208,19 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
-        await self.coordinator.api.async_update_operation_settings(self.coordinator.device, self.dewarmte_description.key, value)
+        key = self.dewarmte_description.key
+        
+        # Special handling for warm water target temperature
+        if key == "warm_water_target_temperature":
+            # When temperature is changed, automatically set schedule mode to false
+            await self.coordinator.api.async_update_operation_settings(
+                self.coordinator.device, "warm_water_target_temperature", value
+            )
+            await self.coordinator.api.async_update_operation_settings(
+                self.coordinator.device, "warm_water_is_scheduled", False
+            )
+        else:
+            # Standard handling for other number entities
+            await self.coordinator.api.async_update_operation_settings(self.coordinator.device, key, value)
+            
         await self.coordinator.async_request_refresh() 

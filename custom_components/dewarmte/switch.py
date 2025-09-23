@@ -24,12 +24,20 @@ class DeWarmteSwitchEntityDescription(SwitchEntityDescription):
     """Class describing DeWarmte switch entities."""
     icon: str | None = None
     translation_key: str | None = None
+    device_types: tuple[str, ...] = ("AO", "PT", "HC")  # Device types this switch applies to
 
 SWITCH_DESCRIPTIONS = {
     "advanced_boost_mode_control": DeWarmteSwitchEntityDescription(
         key="advanced_boost_mode_control",
         name="Boost Mode",
-        icon="mdi:rocket-launch"
+        icon="mdi:rocket-launch",
+        device_types=("AO",),  # AO-specific: boost mode for space heating
+    ),
+    "warm_water_is_scheduled": DeWarmteSwitchEntityDescription(
+        key="warm_water_is_scheduled",
+        name="Warm Water Schedule Mode",
+        icon="mdi:calendar-clock",
+        device_types=("PT",),  # PT-specific: warm water scheduling for heat pumps
     ),
 }
 
@@ -46,16 +54,25 @@ async def async_setup_entry(
         coordinators = [coordinators]
 
     for coordinator in coordinators:
-        # Only create switch entities for AO devices (T devices have no settings)
-        if not coordinator.device.product_id.startswith("AO "):
-            continue
-            
-        entities = []
-        for setting_id, description in SWITCH_DESCRIPTIONS.items():
-            if hasattr(coordinator, '_cached_settings') and coordinator._cached_settings is not None:
-                entities.append(DeWarmteSwitchEntity(coordinator, description))
-
-        async_add_entities(entities)
+        # Filter switch descriptions by device type
+        filtered_descriptions = [
+            description for description in SWITCH_DESCRIPTIONS.values()
+            if coordinator.device.device_type in description.device_types
+        ]
+        
+        switches = [
+            DeWarmteSwitchEntity(coordinator, description)
+            for description in filtered_descriptions
+            if hasattr(coordinator, '_cached_settings') and coordinator._cached_settings is not None
+        ]
+        
+        _LOGGER.debug("Adding %d switches for device %s (type: %s)",
+                     len(switches),
+                     coordinator.device.device_id if coordinator.device else "unknown",
+                     coordinator.device.device_type)
+        
+        if switches:
+            async_add_entities(switches)
 
 @final
 class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SwitchEntity):  # type: ignore[override]

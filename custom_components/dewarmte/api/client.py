@@ -190,12 +190,23 @@ class DeWarmteApiClient:
             control_mode = update_settings.get("cooling_control_mode")
             
             if thermostat_type == "heating_only" and control_mode == "thermostat":
-
                 update_settings["cooling_control_mode"] = "heating_only"
-                
             elif thermostat_type == "heating_and_cooling" and control_mode in ["cooling_only", "heating_only"]:
-
                 update_settings["cooling_control_mode"] = "thermostat"
+        
+        # Convert warm water target temperature to ranges format for API
+        if group.endpoint == "warm-water" and "warm_water_target_temperature" in update_settings:
+            target_temp = update_settings["warm_water_target_temperature"]
+            # Convert to the API's expected ranges format
+            update_settings["warm_water_ranges"] = [
+                {
+                    "order": 0,
+                    "temperature": target_temp,
+                    "period": "00:00-00:00"  # 24/7 period
+                }
+            ]
+            # Remove the flattened field as API expects ranges
+            del update_settings["warm_water_target_temperature"]
         
         _LOGGER.debug("Making POST request to %s with data: %s", url, update_settings)
         try:

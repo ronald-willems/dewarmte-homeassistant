@@ -8,12 +8,7 @@ class SettingsGroup:
     endpoint: str
     keys: List[str]
 
-@dataclass
-class WarmWaterRange:
-    """Warm water range settings."""
-    order: int
-    temperature: float
-    period: str
+# Removed WarmWaterRange class - using flattened structure instead
 
 @dataclass
 class DeviceOperationSettings:
@@ -42,17 +37,19 @@ class DeviceOperationSettings:
     sound_compressor_power: str
     sound_fan_speed: str
     warm_water_is_scheduled: bool
-    warm_water_ranges: List[WarmWaterRange]
+    warm_water_target_temperature: float
     version: int
     is_applied: bool
 
     @classmethod
     def from_api_response(cls, data: Dict[str, Any]) -> "DeviceOperationSettings":
         """Create settings from API response."""
-        warm_water_ranges = [
-            WarmWaterRange(**range_data)
-            for range_data in data.get("warm_water_ranges", [])
-        ]
+        # Convert warm water ranges to a single target temperature
+        # Use the first range's temperature as the target, or default to 55°C
+        warm_water_ranges = data.get("warm_water_ranges", [])
+        warm_water_target_temperature = 55.0  # Default temperature
+        if warm_water_ranges and len(warm_water_ranges) > 0:
+            warm_water_target_temperature = float(warm_water_ranges[0]["temperature"])
 
         return cls(
             # Heat curve settings
@@ -79,7 +76,7 @@ class DeviceOperationSettings:
             sound_compressor_power=data["sound_compressor_power"],
             sound_fan_speed=data["sound_fan_speed"],
             warm_water_is_scheduled=bool(data["warm_water_is_scheduled"]),
-            warm_water_ranges=warm_water_ranges,
+            warm_water_target_temperature=warm_water_target_temperature,
             version=int(data["version"]),
             is_applied=bool(data["is_applied"])
         )
@@ -113,5 +110,9 @@ SETTING_GROUPS = {
         endpoint="cooling",
         keys=["cooling_thermostat_type", "cooling_control_mode", 
               "cooling_temperature", "cooling_duration"],
+    ),
+    "warm_water": SettingsGroup(
+        endpoint="warm-water",
+        keys=["warm_water_is_scheduled", "warm_water_target_temperature"],
     ),
 } 

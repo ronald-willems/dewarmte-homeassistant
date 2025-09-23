@@ -5,7 +5,6 @@ from .api_sensor import ApiSensor
 from .config import ConnectionSettings
 from .settings import (
     DeviceOperationSettings,
-    WarmWaterRange,
 )
 
 __all__ = [
@@ -14,5 +13,4 @@ __all__ = [
     "ApiSensor",
     "ConnectionSettings",
     "DeviceOperationSettings",
-    "WarmWaterRange",
 ] 
