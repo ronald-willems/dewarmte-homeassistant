@@ -33,12 +33,6 @@ SWITCH_DESCRIPTIONS = {
         icon="mdi:rocket-launch",
         device_types=("AO",),  # AO-specific: boost mode for space heating
     ),
-    "warm_water_is_scheduled": DeWarmteSwitchEntityDescription(
-        key="warm_water_is_scheduled",
-        name="Warm Water Schedule Mode",
-        icon="mdi:calendar-clock",
-        device_types=("PT",),  # PT-specific: warm water scheduling for heat pumps
-    ),
 }
 
 async def async_setup_entry(

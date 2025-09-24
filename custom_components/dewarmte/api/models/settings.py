@@ -8,7 +8,12 @@ class SettingsGroup:
     endpoint: str
     keys: List[str]
 
-# Removed WarmWaterRange class - using flattened structure instead
+@dataclass
+class WarmWaterRange:
+    """Represents a warm water temperature range with time period."""
+    order: int
+    temperature: float
+    period: str  # Format: "HH:MM-HH:MM"
 
 @dataclass
 class DeviceOperationSettings:
@@ -38,18 +43,13 @@ class DeviceOperationSettings:
     sound_fan_speed: str
     warm_water_is_scheduled: bool
     warm_water_target_temperature: float
+    warm_water_ranges: List[WarmWaterRange]
     version: int
     is_applied: bool
 
     @classmethod
     def from_api_response(cls, data: Dict[str, Any]) -> "DeviceOperationSettings":
         """Create settings from API response."""
-        # Convert warm water ranges to a single target temperature
-        # Use the first range's temperature as the target, or default to 55°C
-        warm_water_ranges = data.get("warm_water_ranges", [])
-        warm_water_target_temperature = 55.0  # Default temperature
-        if warm_water_ranges and len(warm_water_ranges) > 0:
-            warm_water_target_temperature = float(warm_water_ranges[0]["temperature"])
 
         return cls(
             # Heat curve settings
@@ -75,8 +75,16 @@ class DeviceOperationSettings:
             sound_mode=data["sound_mode"],
             sound_compressor_power=data["sound_compressor_power"],
             sound_fan_speed=data["sound_fan_speed"],
-            warm_water_is_scheduled=bool(data["warm_water_is_scheduled"]),
-            warm_water_target_temperature=warm_water_target_temperature,
+            warm_water_is_scheduled=bool(data.get("warm_water_is_scheduled", False)),
+            warm_water_target_temperature=float(data["warm_water_ranges"][0]["temperature"]) if data.get("warm_water_ranges") and len(data["warm_water_ranges"]) > 0 else 55.0,
+            warm_water_ranges=[
+                WarmWaterRange(
+                    order=range_data.get("order", 0),
+                    temperature=float(range_data.get("temperature", 55.0)),
+                    period=range_data.get("period", "00:00-00:00")
+                )
+                for range_data in data.get("warm_water_ranges", [])
+            ],
             version=int(data["version"]),
             is_applied=bool(data["is_applied"])
         )

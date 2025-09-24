@@ -119,6 +119,7 @@ NUMBER_DESCRIPTIONS = {
     "warm_water_target_temperature": DeWarmteNumberEntityDescription(
         key="warm_water_target_temperature",
         name="Warm Water Target Temperature",
+        translation_key="warm_water_target_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=MIN_WARM_WATER_TEMP,
         native_max_value=MAX_WARM_WATER_TEMP,
@@ -210,17 +211,7 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
         """Update the current value."""
         key = self.dewarmte_description.key
         
-        # Special handling for warm water target temperature
-        if key == "warm_water_target_temperature":
-            # When temperature is changed, automatically set schedule mode to false
-            await self.coordinator.api.async_update_operation_settings(
-                self.coordinator.device, "warm_water_target_temperature", value
-            )
-            await self.coordinator.api.async_update_operation_settings(
-                self.coordinator.device, "warm_water_is_scheduled", False
-            )
-        else:
-            # Standard handling for other number entities
-            await self.coordinator.api.async_update_operation_settings(self.coordinator.device, key, value)
+        # Standard handling for all number entities
+        await self.coordinator.api.async_update_operation_settings(self.coordinator.device, key, value)
             
         await self.coordinator.async_request_refresh() 
