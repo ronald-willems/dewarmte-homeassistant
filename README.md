@@ -6,20 +6,21 @@
 [![HACS Action](https://github.com/ronald-willems/dewarmte-homeassistant/actions/workflows/validate.yaml/badge.svg)](https://github.com/ronald-willems/dewarmte-homeassistant/actions/workflows/validate.yaml)
 [![Validate with hassfest](https://github.com/ronald-willems/dewarmte-homeassistant/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/ronald-willems/dewarmte-homeassistant/actions/workflows/hassfest.yaml)
 
-This integration allows you to control and monitor your DeWarmte heat pump system through Home Assistant.
+This integration allows you to control and monitor your DeWarmte systems through Home Assistant. It support three devices: Pomp AO, Pomp T and Heatcycle. 
 
 This integration is *not* an official integration of DeWarmte. Please reach out for issues and requests using github issues.
  
 
 ## Features
 
-- Monitor heat pump status
-- View energy consumption
+- View sensor information of all 3 devices. Like:
+- - Energy consumption
+- - Energy output
+- - Tempeature
 - Adjust heat curves
 - Adjust settings
 
-Not working yet:
-- Other devices than PompAO
+
 
 
 ## Installation
@@ -63,10 +64,17 @@ The integration provides the following entities:
 - Thermostat Status
 - Target Temperature
 - Electric Backup Usage
+- Boiler temperature
 
+### Integration sensors
+- Energy sensors (kWh)for all Power sensors (kW)
+- Simple CoP (Coefficient of Performance) sensor:  Output energy (heat) divded by input energy (electricity)
 
 ### Settings
 All settings that can be adjusted in web app or mobile app are availabe through this integration
+For PompT the warm water temperature can be adjusted to a fixed target setting. Schedules are not (yet) supported
+
+
 
 ## Troubleshooting
 
