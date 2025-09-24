@@ -123,7 +123,7 @@ NUMBER_DESCRIPTIONS = {
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=MIN_WARM_WATER_TEMP,
         native_max_value=MAX_WARM_WATER_TEMP,
-        native_step=1.0,
+        native_step=5.0,
         device_types=("PT",),  # PT-specific: warm water temperature settings for heat pumps
     ),
 }
