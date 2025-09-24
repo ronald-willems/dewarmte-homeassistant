@@ -96,7 +96,7 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
         hass: HomeAssistant,
         api: DeWarmteApiClient,
         device: Device,
-        update_interval: timedelta = timedelta(seconds=60)
+        update_interval: timedelta
     ) -> None:
         """Initialize."""
         super().__init__(
