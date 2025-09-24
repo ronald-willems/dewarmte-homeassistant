@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from typing import Any, cast, final
-from functools import cached_property
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -91,7 +90,7 @@ class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Swi
         """Get the DeWarmte specific entity description."""
         return cast(DeWarmteSwitchEntityDescription, self.entity_description)
 
-    @cached_property
+    @property
     def is_on(self) -> bool | None:
         """Return true if the switch is on."""
         # Settings are cached in coordinator, read from there
@@ -100,15 +99,6 @@ class DeWarmteSwitchEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Swi
 
         settings = self.coordinator._cached_settings
         return getattr(settings, self.dewarmte_description.key) if settings else None
-
-    # the switch is not updated when the coordinator is updated due to the cached property
-    # this is a workaround to clear the cached property when the coordinator is updated
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        super()._handle_coordinator_update()
-        # Clear the cached property
-        if hasattr(self, "is_on"):
-            delattr(self, "is_on")
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the entity on."""
