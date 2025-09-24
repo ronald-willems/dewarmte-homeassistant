@@ -72,16 +72,6 @@
                     "off": "Disabled"
                 }
             }
-        },
-        "number": {
-            "warm_water_target_temperature": {
-                "name": "Warm Water Target Temperature",
-                "state_attributes": {
-                    "description": {
-                        "description": "Setting this temperature will disable scheduled mode and maintain a constant temperature 24/7"
-                    }
-                }
-            }
         }
     }
 } 

@@ -119,7 +119,7 @@ NUMBER_DESCRIPTIONS = {
     "warm_water_target_temperature": DeWarmteNumberEntityDescription(
         key="warm_water_target_temperature",
         name="Warm Water Target Temperature",
-        translation_key="warm_water_target_temperature",
+        #translation_key="warm_water_target_temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         native_min_value=MIN_WARM_WATER_TEMP,
         native_max_value=MAX_WARM_WATER_TEMP,
