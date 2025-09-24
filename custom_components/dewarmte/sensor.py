@@ -311,8 +311,8 @@ async def async_setup_entry(
                      coordinator.device.device_type)
         async_add_entities(regular_sensors)
 
-        # Wait for sensors to be registered; arbitrary number of seconds
-        await asyncio.sleep(2)
+        # Wait for sensors to be registered; arbitrary number of seconds. 
+        await asyncio.sleep(0.7)
 
         # Then create energy sensors for power sensors per device
         energy_sensors = []
@@ -328,7 +328,7 @@ async def async_setup_entry(
             async_add_entities(energy_sensors)
 
             # Wait for energy sensors to be registered
-            await asyncio.sleep(2)
+            await asyncio.sleep(0.7)
 
             # Find heat output and electrical input energy sensors
             heat_output_sensor = next(
