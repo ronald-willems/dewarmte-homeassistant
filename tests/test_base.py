@@ -75,7 +75,8 @@ class TestBase:
             # Create API client
             connection_settings = ConnectionSettings(
                 username=secrets["username"],
-                password=secrets["password"]
+                password=secrets["password"],
+                update_interval=60
             )
             self.api = DeWarmteApiClient(
                 connection_settings=connection_settings,
