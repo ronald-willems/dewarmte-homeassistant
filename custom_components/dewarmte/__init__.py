@@ -20,7 +20,7 @@ from .api.client import DeWarmteApiClient
 from .api.models.config import ConnectionSettings
 from .api.models.device import Device, DwDeviceInfo
 from .api.models.api_sensor import ApiSensor
-from .const import DOMAIN
+from .const import DOMAIN, DEFAULT_UPDATE_INTERVAL
 from .api.models.status_data import StatusData
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         connection_settings = ConnectionSettings(
             username=entry.data["username"],
             password=entry.data["password"],
-            update_interval=entry.data.get("update_interval", 300)
+            update_interval=entry.data.get("update_interval", DEFAULT_UPDATE_INTERVAL)
         )
         client = DeWarmteApiClient(
             connection_settings=connection_settings,
@@ -121,6 +121,11 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
             status_data = await self.api.async_get_status_data(self.device)
             if not status_data:
                 raise UpdateFailed("Failed to get status data")
+
+            # Log thermostat state for debugging
+            _LOGGER.debug("Device %s: thermostat state = %s", 
+                         self.device.device_id if self.device else "unknown", 
+                         status_data.thermostat)
 
             # Get operation settings (needed for number, select, and switch entities)
             # Fetch settings for AO and PT devices (HC devices have no settings)
