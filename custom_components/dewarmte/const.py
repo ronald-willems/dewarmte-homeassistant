@@ -18,7 +18,7 @@ CONF_PASSWORD = "password"
 CONF_UPDATE_INTERVAL = "update_interval"
 
 # Default values
-DEFAULT_UPDATE_INTERVAL = 300  # 5 minutes in seconds
+DEFAULT_UPDATE_INTERVAL = 60  # 1 minute in seconds
 
 # Sensor IDs
 SENSOR_WATER_FLOW = "water_flow"
