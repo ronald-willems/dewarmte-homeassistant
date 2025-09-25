@@ -76,7 +76,7 @@ class DeWarmteBinarySensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Bin
         """Get the DeWarmte specific entity description."""
         return cast(DeWarmteBinarySensorEntityDescription, self.entity_description)
 
-    @cached_property
+    @property
     def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
         if self.coordinator.data:
