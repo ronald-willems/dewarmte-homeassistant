@@ -27,39 +27,6 @@ components:
         format: uuid
       description: The unique identifier of the device
 
-  headers:
-    defaultHeaders:
-      Accept:
-        schema:
-          type: string
-          default: application/json
-        required: true
-      Accept-Language:
-        schema:
-          type: string
-          default: en-US
-        required: true
-      Accept-Encoding:
-        schema:
-          type: string
-          default: gzip, deflate, br, zstd
-        required: true
-      Content-Type:
-        schema:
-          type: string
-          default: application/json
-        required: true
-      Origin:
-        schema:
-          type: string
-          default: https://mydewarmte.com
-        required: true
-      Referer:
-        schema:
-          type: string
-          default: https://mydewarmte.com/
-        required: true
-
   schemas:
     Error:
       type: object
@@ -316,6 +283,26 @@ components:
         is_applied:
           type: boolean
 
+  responses:
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized - invalid or missing authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not found - device or resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
 paths:
   /auth/token/:
     post:
@@ -566,24 +553,4 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
-          $ref: '#/components/responses/NotFound'
-
-  responses:
-    BadRequest:
-      description: Bad request - validation error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Unauthorized:
-      description: Unauthorized - invalid or missing authentication
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    NotFound:
-      description: Not found - device or resource does not exist
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error' 
+          $ref: '#/components/responses/NotFound' 
