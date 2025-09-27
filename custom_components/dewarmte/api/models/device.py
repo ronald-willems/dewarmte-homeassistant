@@ -17,15 +17,10 @@ class Device:
     device_id: str
     product_id: str
     access_token: str
+    device_type: str
     name: str | None = None
     supports_cooling: bool = False
     _info: Optional[DwDeviceInfo] = None
-
-
-    @property
-    def device_type(self) -> str:
-        """Return the device type (e.g., 'AO', 'PT', 'HC')."""
-        return self.product_id.split()[0] if self.product_id else "Unknown"
 
     @property
     def info(self) -> DwDeviceInfo:
@@ -38,12 +33,13 @@ class Device:
         return self._info
 
     @classmethod
-    def from_api_response(cls, device_id: str, product_id: str, access_token: str, name: Optional[str] = None, supports_cooling: bool = False) -> "Device":
+    def from_api_response(cls, device_id: str, product_id: str, access_token: str, device_type: str, name: Optional[str] = None, supports_cooling: bool = False) -> "Device":
         """Create a device from an API response."""
         return cls(
             device_id=device_id,
             product_id=product_id,
             access_token=access_token,
+            device_type=device_type,
             name=name,
             supports_cooling=supports_cooling
         ) 
