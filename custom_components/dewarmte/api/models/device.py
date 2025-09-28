@@ -11,6 +11,10 @@ class DwDeviceInfo:
     sw_version: str = ""
     hw_version: str = ""
 
+#TODO: Device handling is overly complex. See also client.p
+# Device and DWDeviceInfo classes should be merged. 
+# sw and hw version are not available in the API response.
+# Important: keep entity ID generation backward compatible.
 @dataclass
 class Device:
     """Device model."""

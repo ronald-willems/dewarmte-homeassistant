@@ -60,6 +60,7 @@ class DeWarmteApiClient:
                     product_type = product.get("type")
                     if product_type not in ("AO", "PT","HC"):  # PT appears to be the T device type
                         continue
+                    #TODO: Device handling is overly complex. Important: keep entity ID generation backward compatible.
                     device = Device.from_api_response(
                         device_id=product.get("id"),
                         product_id=f"{product_type} {product.get('name')}",
