@@ -243,7 +243,14 @@ class DeWarmteSimpleApiClient:
                                 if "outdoor_temperature" in tb_data:
                                     status["outdoor_temperature"] = tb_data["outdoor_temperature"]
                         
-                        return StatusData.from_dict(status)
+                        status_data = StatusData.from_dict(status)
+                        if status_data.invalid_fields:
+                            _LOGGER.debug(
+                                "Device %s returned missing/invalid status fields: %s",
+                                device_id,
+                                ", ".join(status_data.invalid_fields),
+                            )
+                        return status_data
                 
                 _LOGGER.error("Device not found in products response")
                 return None

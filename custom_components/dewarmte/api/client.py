@@ -103,6 +103,12 @@ class DeWarmteApiClient:
                     if product.get("id") == device.device_id:
                         # Create StatusData from the product data
                         status_data = StatusData.from_dict({**product, **product.get("status", {})})
+                        if status_data.invalid_fields:
+                            _LOGGER.debug(
+                                "Device %s returned missing/invalid status fields: %s",
+                                device.device_id,
+                                ", ".join(status_data.invalid_fields),
+                            )
                         
                         # Get outdoor temperature from tb-status endpoint
                         tb_status_url = f"{self._base_url}/customer/products/tb-status/"
