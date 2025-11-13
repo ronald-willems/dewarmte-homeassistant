@@ -44,7 +44,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     )
 
     try:
-        if not await client.async_login():
+        if not await client._auth.ensure_token():
             raise InvalidAuth
     except Exception as err:
         raise InvalidAuth from err

@@ -279,17 +279,11 @@ class DeWarmteClimateEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Cl
         _LOGGER.debug("Updating warm water ranges: %s", update_data)
         
         try:
-            async with self.coordinator.api._session.post(
-                url, 
-                json=update_data, 
-                headers=self.coordinator.api._auth.headers
-            ) as response:
-                if response.status != 200:
-                    response_text = await response.text()
-                    _LOGGER.error("Failed to update warm water ranges: %s - %s", response.status, response_text)
-                    raise Exception(f"API request failed: {response.status} - {response_text}")
-                
-                _LOGGER.debug("Successfully updated warm water ranges")
+            response = await self.coordinator.api._request_with_retry("POST", url, json=update_data)
+            if response is None:
+                raise Exception("API request failed: no response")
+            
+            _LOGGER.debug("Successfully updated warm water ranges")
         except Exception as e:
             _LOGGER.error("Error updating warm water ranges: %s", e)
             raise

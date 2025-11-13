@@ -24,55 +24,107 @@ class DeWarmteApiClient:
         self._session = session
         self._base_url = "https://api.mydewarmte.com/v1"
         self._auth = DeWarmteAuth(connection_settings.username, connection_settings.password, session)
-        self._is_logged_in = False
 
-    async def async_login(self) -> bool:
-        """Login to the API."""
-        if self._is_logged_in:
-            return True
+    #TODO: Is this the best way to handle retries? Or should we use aiohttp's built in retry functionality?
+    async def _request_with_retry(
+        self,
+        method: str,
+        url: str,
+        retry: bool = True,
+        **kwargs: Any,
+    ) -> tuple[int, Dict[str, Any] | None] | None:
+        """Perform HTTP request with automatic retry on 401 unauthorized.
+        
+        Args:
+            method: HTTP method (GET, POST, PUT, DELETE, etc.)
+            url: Request URL
+            retry: Whether to retry once on 401
+            **kwargs: Additional arguments passed to the session request method
             
-        token = await self._auth.login()
-        if token:
-            self._is_logged_in = True
-            return True
-        return False
+        Returns:
+            Tuple of (status_code, json_data) on success, None on failure.
+            json_data will be None if response is not JSON or on error.
+        """
+        if not await self._auth.ensure_token():
+            _LOGGER.error("Cannot perform %s %s without valid login", method, url)
+            return None
+
+        try:
+            # Get the appropriate method from session
+            request_method = getattr(self._session, method.lower())
+            async with request_method(url, headers=self._auth.headers, **kwargs) as response:
+                if response.status == 401 and retry:
+                    _LOGGER.debug("%s %s returned 401; refreshing token and retrying", method, url)
+                    self._auth.mark_expired()
+                    if not await self._auth.ensure_token(force=True):
+                        return None
+                    # Retry the request
+                    async with request_method(url, headers=self._auth.headers, **kwargs) as retry_response:
+                        if retry_response.status != 200:
+                            _LOGGER.error("Failed to %s %s after retry: %d", method, url, retry_response.status)
+                            return None
+                        # Read JSON inside context before it closes
+                        try:
+                            json_data = await retry_response.json()
+                        except Exception:
+                            json_data = None
+                        return (retry_response.status, json_data)
+
+                if response.status != 200:
+                    _LOGGER.error("Failed to %s %s: %d", method, url, response.status)
+                    if response.status == 401:
+                        self._auth.mark_expired()
+                    return None
+                # Read JSON inside context before it closes
+                try:
+                    json_data = await response.json()
+                except Exception:
+                    json_data = None
+                return (response.status, json_data)
+        except Exception as err:
+            _LOGGER.error("Error performing %s %s: %s", method, url, err)
+            return None
+
+    async def _get_with_retry(self, url: str, retry: bool = True) -> Dict[str, Any] | None:
+        """Perform GET request with optional retry on unauthorized."""
+        result = await self._request_with_retry("GET", url, retry=retry)
+        if result is None:
+            return None
+        _status, json_data = result
+        return json_data
 
     async def async_discover_devices(self) -> list[Device]:
         """Discover all supported devices from the API."""
-        # Ensure we're logged in
-        if not await self.async_login():
-            return []
-
         try:
             # Get device info
             products_url = f"{self._base_url}/customer/products/"
             _LOGGER.debug("Making GET request to %s", products_url)
-            async with self._session.get(products_url, headers=self._auth.headers) as response:
-                if response.status != 200:
-                    _LOGGER.error("Failed to get products info: %d", response.status)
-                    return []
-                data = await response.json()
-                _LOGGER.debug("Products data: %s", data)
-                
-                # Build device list for supported types (AO and T)
-                devices: list[Device] = []
-                for product in data.get("results", []):
-                    product_type = product.get("type")
-                    if product_type not in ("AO", "PT","HC"):  # PT appears to be the T device type
-                        continue
-                    #TODO: Device handling is overly complex. Important: keep entity ID generation backward compatible.
-                    device = Device.from_api_response(
-                        device_id=product.get("id"),
-                        product_id=f"{product_type} {product.get('name')}",
-                        access_token=self._auth.access_token,  # Get token from auth object
-                        device_type=product_type,  # Pass device_type directly from API response
-                        #name=product.get("nickname"),  # Pass nickname for device name
-                        supports_cooling=product.get("cooling", False),
-                    )
-                    devices.append(device)
+            response = await self._get_with_retry(products_url)
+            if response is None:
+                return []
+            
+            data = response
+            _LOGGER.debug("Products data: %s", data)
+            
+            # Build device list for supported types (AO and T)
+            devices: list[Device] = []
+            for product in data.get("results", []):
+                product_type = product.get("type")
+                if product_type not in ("AO", "PT","HC"):  # PT appears to be the T device type
+                    continue
+                #TODO: Device handling is overly complex. Important: keep entity ID generation backward compatible.
+                device = Device.from_api_response(
+                    device_id=product.get("id"),
+                    product_id=f"{product_type} {product.get('name')}",
+                    access_token=self._auth.access_token,  # Get token from auth object
+                    device_type=product_type,  # Pass device_type directly from API response
+                    #name=product.get("nickname"),  # Pass nickname for device name
+                    supports_cooling=product.get("cooling", False),
+                )
+                devices.append(device)
 
-                _LOGGER.debug("Discovered devices: %s", [d.device_id for d in devices])
-                return devices
+            _LOGGER.debug("Discovered devices: %s", [d.device_id for d in devices])
+            return devices
 
         except Exception as err:
             _LOGGER.error("Error getting device info: %s", str(err))
@@ -80,75 +132,58 @@ class DeWarmteApiClient:
 
     async def async_get_status_data(self, device: Device) -> StatusData | None:
         """Get status data from the API for a specific device."""
-        # Ensure we're logged in
-        if not await self.async_login():
-            _LOGGER.error("Failed to login")
-            return None
-
         try:
             # Get main status data
             products_url = f"{self._base_url}/customer/products/"
             _LOGGER.debug("Making GET request to %s", products_url)
-            async with self._session.get(products_url, headers=self._auth.headers) as response:
-                if response.status != 200:
-                    _LOGGER.error("Failed to get status data: %d", response.status)
-                    if response.status == 401:  # Unauthorized - token expired
-                        self._is_logged_in = False
-                    return None
-                data = await response.json()
-                _LOGGER.debug("Products data: %s", data)
-                
-                # Find our device in the results
-                for product in data.get("results", []):
-                    if product.get("id") == device.device_id:
-                        # Create StatusData from the product data
-                        status_data = StatusData.from_dict({**product, **product.get("status", {})})
-                        if status_data.invalid_fields:
-                            _LOGGER.debug(
-                                "Device %s returned missing/invalid status fields: %s",
-                                device.device_id,
-                                ", ".join(status_data.invalid_fields),
-                            )
-                        
-                        # Get outdoor temperature from tb-status endpoint
-                        tb_status_url = f"{self._base_url}/customer/products/tb-status/"
-                        _LOGGER.debug("Making GET request to %s", tb_status_url)
-                        async with self._session.get(tb_status_url, headers=self._auth.headers) as tb_response:
-                            if tb_response.status == 200:
-                                tb_data = await tb_response.json()
-                                _LOGGER.debug("TB status data: %s", tb_data)
-                                if "outdoor_temperature" in tb_data:
-                                    status_data.outdoor_temperature = float(tb_data["outdoor_temperature"])
-                        
-                        return status_data
-                
-                _LOGGER.error("Device %s not found in products response", device.device_id)
+            response = await self._get_with_retry(products_url)
+            if response is None:
                 return None
+
+            data = response
+            _LOGGER.debug("Products data: %s", data)
+
+            # Find our device in the results
+            for product in data.get("results", []):
+                if product.get("id") == device.device_id:
+                    # Create StatusData from the product data
+                    status_data = StatusData.from_dict({**product, **product.get("status", {})})
+                    if status_data.invalid_fields:
+                        _LOGGER.debug(
+                            "Device %s returned missing/invalid status fields: %s",
+                            device.device_id,
+                            ", ".join(status_data.invalid_fields),
+                        )
+
+                    # Get outdoor temperature from tb-status endpoint
+                    tb_status_url = f"{self._base_url}/customer/products/tb-status/"
+                    _LOGGER.debug("Making GET request to %s", tb_status_url)
+                    tb_response = await self._get_with_retry(tb_status_url)
+                    if tb_response is not None and "outdoor_temperature" in tb_response:
+                        _LOGGER.debug("TB status data: %s", tb_response)
+                        status_data.outdoor_temperature = float(tb_response["outdoor_temperature"])
+
+                    return status_data
+
+            _LOGGER.error("Device %s not found in products response", device.device_id)
+            return None
         except Exception as err:
             _LOGGER.error("Error getting status data: %s", str(err))
             return None
 
     async def async_get_operation_settings(self, device: Device) -> DeviceOperationSettings | None:
         """Get operation settings from the API for a specific device."""
-        # Ensure we're logged in
-        if not await self.async_login():
-            _LOGGER.error("Failed to login")
-            return None
-
         try:
             settings_url = f"{self._base_url}/customer/products/{device.device_id}/settings/"
             _LOGGER.debug("Making GET request to %s", settings_url)
-            async with self._session.get(settings_url, headers=self._auth.headers) as response:
-                if response.status != 200:
-                    _LOGGER.error("Failed to get operation settings: %d", response.status)
-                    if response.status == 401:  # Unauthorized - token expired
-                        self._is_logged_in = False
-                    return None
-                data = await response.json()
-                _LOGGER.debug("Operation settings data: %s", data)
-                
-                settings = DeviceOperationSettings.from_api_response(data)
-                return settings
+            response = await self._get_with_retry(settings_url)
+            if response is None:
+                return None
+            data = response
+            _LOGGER.debug("Operation settings data: %s", data)
+
+            settings = DeviceOperationSettings.from_api_response(data)
+            return settings
                 
         except Exception as err:
             _LOGGER.error("Error getting operation settings: %s", str(err))
@@ -156,10 +191,6 @@ class DeWarmteApiClient:
 
     async def async_update_operation_settings(self, device: Device, key: str, value: Union[float, str, int, bool]) -> None:
         """Update a single operation setting for a specific device."""
-        # Ensure we're logged in
-        if not await self.async_login():
-            raise ValueError("Failed to login")
-
         _LOGGER.debug("Updating operation setting %s to %s", key, value)
 
         # Find which group this setting belongs to
@@ -221,15 +252,12 @@ class DeWarmteApiClient:
         
         _LOGGER.debug("Making POST request to %s with data: %s", url, update_settings)
         try:
-            async with self._session.post(url, json=update_settings, headers=self._auth.headers) as response:
-                if response.status != 200:
-                    response_text = await response.text()
-                    _LOGGER.error("Failed to update %s settings: %d", group.endpoint, response.status)
-                    _LOGGER.error("Response: %s", response_text)
-                    if response.status == 401:  # Unauthorized - token expired
-                        self._is_logged_in = False
-                    raise ValueError(f"Failed to update {group.endpoint} settings: {response.status}")
-                response_data = await response.json()
+            result = await self._request_with_retry("POST", url, json=update_settings)
+            if result is None:
+                raise ValueError(f"Failed to update {group.endpoint} settings")
+            
+            _status, response_data = result
+            if response_data is not None:
                 _LOGGER.debug("%s settings update response: %s", group.endpoint, response_data)
         except Exception as err:
             _LOGGER.error("Error updating %s settings: %s", group.endpoint, str(err))

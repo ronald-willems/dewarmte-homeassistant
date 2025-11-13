@@ -84,7 +84,7 @@ class TestBase:
             )
             
             # Login
-            if not await self.api.async_login():
+            if not await self.api._auth.ensure_token():
                 raise ValueError("Login failed")
                 
         except Exception as err:
