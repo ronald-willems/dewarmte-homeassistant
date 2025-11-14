@@ -161,7 +161,13 @@ class DeWarmteApiClient:
                     tb_response = await self._get_with_retry(tb_status_url)
                     if tb_response is not None and "outdoor_temperature" in tb_response:
                         _LOGGER.debug("TB status data: %s", tb_response)
-                        status_data.outdoor_temperature = float(tb_response["outdoor_temperature"])
+                        outdoor_temp = tb_response["outdoor_temperature"]
+                        if outdoor_temp is not None and outdoor_temp != "":
+                            try:
+                                status_data.outdoor_temperature = float(outdoor_temp)
+                            except (TypeError, ValueError):
+                                _LOGGER.debug("Invalid outdoor_temperature value: %s", outdoor_temp)
+                                # Leave status_data.outdoor_temperature as None (from StatusData initialization)
 
                     return status_data
 
