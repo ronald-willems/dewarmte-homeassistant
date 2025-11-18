@@ -148,25 +148,19 @@ class DeWarmteApiClient:
                 if product.get("id") == device.device_id:
                     # Create StatusData from the product data
                     status_data = StatusData.from_dict({**product, **product.get("status", {})})
-                    if status_data.invalid_fields:
-                        _LOGGER.debug(
-                            "Device %s returned missing/invalid status fields: %s",
-                            device.device_id,
-                            ", ".join(status_data.invalid_fields),
-                        )
 
                     # Get outdoor temperature from tb-status endpoint
                     tb_status_url = f"{self._base_url}/customer/products/tb-status/"
                     _LOGGER.debug("Making GET request to %s", tb_status_url)
                     tb_response = await self._get_with_retry(tb_status_url)
-                    try:
-                        # API contract: outdoor_temperature should be present and valid
-                        status_data.outdoor_temperature = float(tb_response["outdoor_temperature"])  # type: ignore[index]
-                    except (KeyError, TypeError, ValueError) as exc:
-                        _LOGGER.warning(
-                            "Invalid tb-status outdoor_temperature; response=%r error=%s",
-                            tb_response,
-                            exc,
+                    if tb_response is not None:
+                        status_data.update_from_dict(tb_response)
+
+                    if status_data.invalid_fields:
+                        _LOGGER.debug(
+                            "Device %s returned missing/invalid status fields: %s",
+                            device.device_id,
+                            ", ".join(status_data.invalid_fields),
                         )
 
                     return status_data

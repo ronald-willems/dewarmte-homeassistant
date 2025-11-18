@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
-
-RawValue = Any
+from typing import Any, get_args, get_origin
 
 @dataclass
 class StatusData:
@@ -34,78 +32,71 @@ class StatusData:
     @classmethod
     def from_dict(cls, data: dict) -> "StatusData":
         """Create StatusData from dictionary."""
-        issues: list[str] = []
-
-        def _has_key(key: str) -> bool:
-            return key in data
-
-        def _mark_issue(key: str, value: RawValue, reason: str) -> None:
-            issues.append(f"{key}={value!r} ({reason})")
-
-        def _coerce_float(key: str) -> float | None:
-            if not _has_key(key):
-                return None
-            raw = data.get(key)
-            if raw in ("", None):
-                _mark_issue(key, raw, "missing")
-                return None
-            try:
-                return float(raw)
-            except (TypeError, ValueError):
-                _mark_issue(key, raw, "invalid")
-                return None
-
-        def _coerce_int(key: str) -> int | None:
-            if not _has_key(key):
-                return None
-            raw = data.get(key)
-            if raw in ("", None):
-                _mark_issue(key, raw, "missing")
-                return None
-            try:
-                return int(raw)
-            except (TypeError, ValueError):
-                _mark_issue(key, raw, "invalid")
-                return None
-
-        def _coerce_bool(key: str) -> bool | None:
-            if not _has_key(key):
-                return None
-            raw = data.get(key)
-            if raw in ("", None):
-                _mark_issue(key, raw, "missing")
-                return None
-            if isinstance(raw, bool):
-                return raw
-            if isinstance(raw, str):
-                normalized = raw.strip().lower()
-                if normalized in {"true", "1", "yes", "on", "active"}:
-                    return True
-                if normalized in {"false", "0", "no", "off", "inactive"}:
-                    return False
-            if isinstance(raw, (int, float)):
-                return bool(raw)
-            _mark_issue(key, raw, "invalid")
-            return None
-
-        status = cls(
-            water_flow=_coerce_float("water_flow"),
-            supply_temperature=_coerce_float("supply_temperature"),
-            outdoor_temperature=_coerce_float("outdoor_temperature"),
-            heat_input=_coerce_float("heat_input"),
-            actual_temperature=_coerce_float("actual_temperature"),
-            electricity_consumption=_coerce_float("electricity_consumption"),
-            heat_output=_coerce_float("heat_output"),
-            gas_boiler=_coerce_bool("gas_boiler"),
-            thermostat=_coerce_bool("thermostat"),
-            target_temperature=_coerce_float("target_temperature"),
-            electric_backup_usage=_coerce_float("electric_backup_usage"),
-            is_on=_coerce_bool("is_on"),
-            fault_code=_coerce_int("fault_code"),
-            is_connected=_coerce_bool("is_connected"),
-            top_boiler_temp=_coerce_float("top_boiler_temp"),
-            bottom_boiler_temp=_coerce_float("bottom_boiler_temp"),
-            invalid_fields=tuple(issues),
-        )
-
+        status = cls()
+        status.update_from_dict(data)
         return status
+
+    def update_from_dict(self, data: dict) -> None:
+        """Incrementally update fields."""
+        issues = list(self.invalid_fields)
+
+        for key, raw in data.items():
+            if key == "invalid_fields":
+                continue
+
+            annotation = StatusData.__annotations__.get(key)
+            if annotation is None:
+                continue
+
+            if raw in ("", None):
+                issues.append(f"{key}={raw!r} (missing)")
+                setattr(self, key, None)
+                continue
+
+            try:
+                if _annotation_includes(annotation, bool):
+                    value = _coerce_bool(raw)
+                elif _annotation_includes(annotation, int):
+                    value = _coerce_int(raw)
+                elif _annotation_includes(annotation, float):
+                    value = _coerce_float(raw)
+                else:
+                    value = raw
+            except (TypeError, ValueError):
+                issues.append(f"{key}={raw!r} (invalid)")
+                value = None
+
+            setattr(self, key, value)
+
+        self.invalid_fields = tuple(issues)
+
+
+def _annotation_includes(annotation: Any, target_type: type) -> bool:
+    if annotation is target_type:
+        return True
+    origin = get_origin(annotation)
+    if origin is None:
+        return False
+    return any(_annotation_includes(arg, target_type) for arg in get_args(annotation))
+
+
+def _coerce_float(value: Any) -> float:
+    return float(value)
+
+
+def _coerce_int(value: Any) -> int:
+    return int(value)
+
+
+def _coerce_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on", "active"}:
+            return True
+        if normalized in {"false", "0", "no", "off", "inactive"}:
+            return False
+    if isinstance(value, (int, float)):
+        return bool(value)
+    raise ValueError("Invalid boolean value")
