@@ -154,6 +154,7 @@ class DeWarmteApiClient:
                     _LOGGER.debug("Making GET request to %s", tb_status_url)
                     tb_response = await self._get_with_retry(tb_status_url)
                     if tb_response is not None:
+                        _LOGGER.debug("Status data: %s", tb_response)
                         status_data.update_from_dict(tb_response)
 
                     if status_data.invalid_fields:
