@@ -6,7 +6,7 @@
 [![HACS Action](https://github.com/ronald-willems/dewarmte-homeassistant/actions/workflows/validate.yaml/badge.svg)](https://github.com/ronald-willems/dewarmte-homeassistant/actions/workflows/validate.yaml)
 [![Validate with hassfest](https://github.com/ronald-willems/dewarmte-homeassistant/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/ronald-willems/dewarmte-homeassistant/actions/workflows/hassfest.yaml)
 
-This integration allows you to control and monitor your DeWarmte systems through Home Assistant. It support four devices: Pomp AO, Pomp MP, Pomp T and Heatcycle. 
+This integration allows you to control and monitor your DeWarmte systems through Home Assistant. It supports four devices: Pomp AO, Pomp MP, Pomp T and Heatcycle. 
 
 This integration is *not* an official integration of DeWarmte. Please reach out for issues and requests using github issues.
  
