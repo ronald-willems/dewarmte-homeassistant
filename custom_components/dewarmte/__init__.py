@@ -128,8 +128,8 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
                          status_data.thermostat)
 
             # Get operation settings (needed for number, select, and switch entities)
-            # Fetch settings for AO and PT devices (HC devices have no settings)
-            if self.device.product_id.startswith(("AO ", "PT ")):
+            # Fetch settings for AO, MP, and PT devices (HC devices have no settings)
+            if self.device.product_id.startswith(("AO ", "MP ", "PT ")):
                 self._cached_settings = await self.api.async_get_operation_settings(self.device)
             else:
                 self._cached_settings = None

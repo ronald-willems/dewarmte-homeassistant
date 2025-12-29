@@ -30,7 +30,7 @@ SWITCH_DESCRIPTIONS = {
         key="advanced_boost_mode_control",
         name="Boost Mode",
         icon="mdi:rocket-launch",
-        device_types=("AO",),  # AO-specific: boost mode for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: boost mode for space heating
     ),
 }
 

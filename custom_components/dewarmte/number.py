@@ -51,7 +51,7 @@ NUMBER_DESCRIPTIONS = {
         native_min_value=MIN_OUTSIDE_TEMP,
         native_max_value=MAX_OUTSIDE_TEMP,
         native_step=1.0,
-        device_types=("AO",),  # AO-specific: heat curve settings for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: heat curve settings for space heating
     ),
     "heat_curve_s1_target_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s1_target_temp",
@@ -60,7 +60,7 @@ NUMBER_DESCRIPTIONS = {
         native_min_value=MIN_TARGET_TEMP,
         native_max_value=MAX_TARGET_TEMP,
         native_step=1.0,
-        device_types=("AO",),  # AO-specific: heat curve settings for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: heat curve settings for space heating
     ),
     "heat_curve_s2_outside_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s2_outside_temp",
@@ -69,7 +69,7 @@ NUMBER_DESCRIPTIONS = {
         native_min_value=MIN_OUTSIDE_TEMP,
         native_max_value=MAX_OUTSIDE_TEMP,
         native_step=1.0,
-        device_types=("AO",),  # AO-specific: heat curve settings for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: heat curve settings for space heating
     ),
     "heat_curve_s2_target_temp": DeWarmteNumberEntityDescription(
         key="heat_curve_s2_target_temp",
@@ -78,7 +78,7 @@ NUMBER_DESCRIPTIONS = {
         native_min_value=MIN_TARGET_TEMP,
         native_max_value=MAX_TARGET_TEMP,
         native_step=1.0,
-        device_types=("AO",),  # AO-specific: heat curve settings for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: heat curve settings for space heating
     ),
     "heat_curve_fixed_temperature": DeWarmteNumberEntityDescription(
         key="heat_curve_fixed_temperature",
@@ -87,7 +87,7 @@ NUMBER_DESCRIPTIONS = {
         native_min_value=MIN_TARGET_TEMP,
         native_max_value=MAX_TARGET_TEMP,
         native_step=1.0,
-        device_types=("AO",),  # AO-specific: heat curve settings for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: heat curve settings for space heating
     ),
     "heating_performance_backup_temperature": DeWarmteNumberEntityDescription(
         key="heating_performance_backup_temperature",
@@ -96,7 +96,7 @@ NUMBER_DESCRIPTIONS = {
         native_min_value=MIN_BACKUP_TEMP,
         native_max_value=MAX_BACKUP_TEMP,
         native_step=1.0,
-        device_types=("AO",),  # AO-specific: heating performance settings for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: heating performance settings for space heating
     ),
     "cooling_temperature": DeWarmteNumberEntityDescription(
         key="cooling_temperature",
@@ -105,7 +105,7 @@ NUMBER_DESCRIPTIONS = {
         native_min_value=MIN_COOLING_TEMP,
         native_max_value=MAX_COOLING_TEMP,
         native_step=1.0,
-        device_types=("AO",),  # AO-specific: cooling settings for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: cooling settings for space heating
     ),
     "cooling_duration": DeWarmteNumberEntityDescription(
         key="cooling_duration",
@@ -114,7 +114,7 @@ NUMBER_DESCRIPTIONS = {
         native_min_value=MIN_COOLING_DURATION,
         native_max_value=MAX_COOLING_DURATION,
         native_step=1.0,
-        device_types=("AO",),  # AO-specific: cooling settings for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: cooling settings for space heating
     ),
     "warm_water_target_temperature": DeWarmteNumberEntityDescription(
         key="warm_water_target_temperature",

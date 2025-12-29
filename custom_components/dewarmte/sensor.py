@@ -57,7 +57,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
-        device_types=("AO",),  # AO-specific: circulation flow for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: circulation flow for space heating
     ),
     DeWarmteSensorEntityDescription(
         key="supply_temperature",
@@ -65,7 +65,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        device_types=("AO",),  # AO-specific: heating supply temperature
+        device_types=("AO", "MP"),  # AO/MP-specific: heating supply temperature
     ),
     DeWarmteSensorEntityDescription(
         key="outdoor_temperature",
@@ -73,7 +73,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        device_types=("AO",),  # AO-specific: outdoor sensor physically connected to AO device
+        device_types=("AO", "MP"),  # AO/MP-specific: outdoor sensor physically connected to device
     ),
     DeWarmteSensorEntityDescription(
         key="heat_input",
@@ -81,7 +81,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        device_types=("AO", "PT", "HC"),  # Common: heat input for all devices
+        device_types=("AO", "PT", "HC", "MP"),  # Common: heat input for all devices
     ),
     DeWarmteSensorEntityDescription(
         key="actual_temperature",
@@ -89,7 +89,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        device_types=("AO",),  # AO-specific: actual heating temperature
+        device_types=("AO", "MP"),  # AO/MP-specific: actual heating temperature
     ),
     DeWarmteSensorEntityDescription(
         key="electricity_consumption",
@@ -97,7 +97,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        device_types=("AO", "PT", "HC"),  # Common: electricity consumption for all
+        device_types=("AO", "PT", "HC", "MP"),  # Common: electricity consumption for all
     ),
     DeWarmteSensorEntityDescription(
         key="heat_output",
@@ -105,7 +105,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        device_types=("AO", "PT", "HC"),  # Common: heat output for all devices
+        device_types=("AO", "PT", "HC", "MP"),  # Common: heat output for all devices
     ),
     DeWarmteSensorEntityDescription(
         key="target_temperature",
@@ -113,7 +113,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        device_types=("AO",),  # AO-specific: heating target temperature
+        device_types=("AO", "MP"),  # AO/MP-specific: heating target temperature
     ),
     DeWarmteSensorEntityDescription(
         key="electric_backup_usage",
@@ -121,7 +121,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        device_types=("AO",),  # AO-specific: backup heating for space heating
+        device_types=("AO", "MP"),  # AO/MP-specific: backup heating for space heating
     ),
     # Operational status sensors
     DeWarmteSensorEntityDescription(
@@ -130,7 +130,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=None,
         state_class=None,
         native_unit_of_measurement=None,
-        device_types=("AO", "PT", "HC"),  # Common: fault codes for all devices
+        device_types=("AO", "PT", "HC", "MP"),  # Common: fault codes for all devices
     ),
     # PT device specific sensors (DHW heat pump)
     DeWarmteSensorEntityDescription(

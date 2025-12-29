@@ -31,25 +31,25 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = 
         key="gas_boiler",
         name="Gas Boiler",
         device_class=BinarySensorDeviceClass.HEAT,
-        device_types=("AO",),  # AO-specific: gas boiler backup heating
+        device_types=("AO", "MP"),  # AO/MP-specific: gas boiler backup heating
     ),
     DeWarmteBinarySensorEntityDescription(
         key="thermostat",
         name="Thermostat",
         device_class=BinarySensorDeviceClass.HEAT,
-        device_types=("AO",),  # AO-specific: space heating thermostat
+        device_types=("AO", "MP"),  # AO/MP-specific: space heating thermostat
     ),
     DeWarmteBinarySensorEntityDescription(
         key="is_on",
         name="Is On",
         device_class=BinarySensorDeviceClass.RUNNING,
-        device_types=("AO", "PT"),  # AO/PT only: HC devices don't provide this field
+        device_types=("AO", "PT", "MP"),  # AO/PT/MP only: HC devices don't provide this field
     ),
     DeWarmteBinarySensorEntityDescription(
         key="is_connected",
         name="Is Connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        device_types=("AO", "PT"),  # AO/PT only: HC devices don't provide this field
+        device_types=("AO", "PT", "MP"),  # AO/PT/MP only: HC devices don't provide this field
     ),
 )
 

@@ -152,8 +152,8 @@ async def async_setup_entry(
         coordinators = [coordinators]
 
     for coordinator in coordinators:
-        # Only create select entities for AO devices (T devices have no settings)
-        if not coordinator.device.product_id.startswith("AO "):
+        # Only create select entities for AO and MP devices (T devices have no settings)
+        if not coordinator.device.product_id.startswith(("AO ", "MP ")):
             continue
             
         # Filter out cooling entities if cooling is not supported

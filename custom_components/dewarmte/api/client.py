@@ -110,7 +110,7 @@ class DeWarmteApiClient:
             devices: list[Device] = []
             for product in data.get("results", []):
                 product_type = product.get("type")
-                if product_type not in ("AO", "PT","HC"):  # PT appears to be the T device type
+                if product_type not in ("AO", "PT","HC","MP"):  # PT appears to be the T device type
                     continue
                 #TODO: Device handling is overly complex. Important: keep entity ID generation backward compatible.
                 device = Device.from_api_response(
