@@ -50,6 +50,8 @@ This integration is *not* an official integration of DeWarmte. Please reach out 
 
 ## Entities
 
+For a full reference of all entities with descriptions and device applicability, see [Entity reference](docs/ENTITIES.md).
+
 The integration provides the following entities:
 
 ### Sensors
@@ -73,8 +75,6 @@ The integration provides the following entities:
 ### Settings
 All settings that can be adjusted in web app or mobile app are availabe through this integration
 For PompT the warm water temperature can be adjusted to a fixed target setting. Schedules are not (yet) supported
-
-For a full reference of all entities with descriptions and device applicability, see [Entity reference](docs/ENTITIES.md).
 
 ## Troubleshooting
 
