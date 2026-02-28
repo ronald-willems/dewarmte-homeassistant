@@ -106,16 +106,17 @@ class DeWarmteApiClient:
             data = response
             _LOGGER.debug("Products data: %s", data)
             
-            # Build device list for supported types (AO and T)
+            # Add all products from the API; skip only those without an id
             devices: list[Device] = []
             for product in data.get("results", []):
-                product_type = product.get("type")
-                if product_type not in ("AO", "PT","HC","MP"):  # PT appears to be the T device type
+                device_id = product.get("id")
+                if not device_id:
                     continue
+                product_type = product.get("type", "unknown")
                 #TODO: Device handling is overly complex. Important: keep entity ID generation backward compatible.
                 device = Device.from_api_response(
-                    device_id=product.get("id"),
-                    product_id=f"{product_type} {product.get('name')}",
+                    device_id=device_id,
+                    product_id=f"{product_type} {product.get('name', '')}",
                     access_token=self._auth.access_token,  # Get token from auth object
                     device_type=product_type,  # Pass device_type directly from API response
                     #name=product.get("nickname"),  # Pass nickname for device name
