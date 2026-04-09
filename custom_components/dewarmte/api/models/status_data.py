@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, get_args, get_origin
+from typing import Any, get_args, get_origin, get_type_hints
 
 @dataclass
 class StatusData:
@@ -39,12 +39,13 @@ class StatusData:
     def update_from_dict(self, data: dict) -> None:
         """Incrementally update fields."""
         issues = list(self.invalid_fields)
+        type_hints = get_type_hints(StatusData)
 
         for key, raw in data.items():
             if key == "invalid_fields":
                 continue
 
-            annotation = StatusData.__annotations__.get(key)
+            annotation = type_hints.get(key)
             if annotation is None:
                 continue
 

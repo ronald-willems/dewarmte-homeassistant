@@ -134,6 +134,11 @@ class DeWarmteApiClient:
     async def async_get_status_data(self, device: Device) -> StatusData | None:
         """Get status data from the API for a specific device."""
         try:
+            # Ensure token refresh happens proactively before we start.
+            # (We still call ensure_token per request in _request_with_retry.)
+            if not await self._auth.ensure_token():
+                return None
+
             # Get main status data
             products_url = f"{self._base_url}/customer/products/"
             _LOGGER.debug("Making GET request to %s", products_url)

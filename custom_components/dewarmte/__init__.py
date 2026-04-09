@@ -20,7 +20,7 @@ from .api.client import DeWarmteApiClient
 from .api.models.config import ConnectionSettings
 from .api.models.device import Device, DwDeviceInfo
 from .api.models.api_sensor import ApiSensor
-from .const import DOMAIN, DEFAULT_UPDATE_INTERVAL
+from .const import CONF_UPDATE_INTERVAL, DOMAIN, DEFAULT_UPDATE_INTERVAL
 from .api.models.status_data import StatusData
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,6 +33,12 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
+
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up DeWarmte from a config entry."""
     try:
@@ -40,13 +46,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         from . import sensor, binary_sensor, number, select, switch  # noqa: F401
 
         hass.data.setdefault(DOMAIN, {})
+        entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
         # Create API client
         session = async_get_clientsession(hass)
+        update_interval = entry.options.get(
+            CONF_UPDATE_INTERVAL,
+            entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
+        )
         connection_settings = ConnectionSettings(
             username=entry.data["username"],
             password=entry.data["password"],
-            update_interval=entry.data.get("update_interval", DEFAULT_UPDATE_INTERVAL)
+            update_interval=update_interval
         )
         client = DeWarmteApiClient(
             connection_settings=connection_settings,

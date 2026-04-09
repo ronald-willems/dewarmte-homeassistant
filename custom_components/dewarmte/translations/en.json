@@ -21,6 +21,19 @@
             "already_configured": "This DeWarmte account is already configured"
         }
     },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "username": "Email (leave empty to keep current)",
+                    "password": "Password (leave empty to keep current)",
+                    "update_interval": "Update interval (seconds)"
+                },
+                "description": "Change update interval and/or credentials",
+                "title": "DeWarmte Options"
+            }
+        }
+    },
     "entity": {
         "switch": {
             "default_heating": {
