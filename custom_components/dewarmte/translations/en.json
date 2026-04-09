@@ -24,13 +24,27 @@
     "options": {
         "step": {
             "init": {
+                "menu_options": {
+                    "update_interval": "Update interval",
+                    "credentials": "Credentials"
+                },
+                "description": "What would you like to change?",
+                "title": "DeWarmte Options"
+            },
+            "update_interval": {
                 "data": {
-                    "username": "Email (leave empty to keep current)",
-                    "password": "Password (leave empty to keep current)",
                     "update_interval": "Update interval (seconds)"
                 },
-                "description": "Change update interval and/or credentials",
-                "title": "DeWarmte Options"
+                "description": "How often Home Assistant should poll DeWarmte.",
+                "title": "Update interval"
+            },
+            "credentials": {
+                "data": {
+                    "username": "Email",
+                    "password": "Password"
+                },
+                "description": "Enter your MyDeWarmte credentials.",
+                "title": "Credentials"
             }
         }
     },
