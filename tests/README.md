@@ -16,7 +16,7 @@ Manual test script that connects to the actual DeWarmte website. This script ver
 - Status data retrieval
 - Basic settings management
 
-Requires valid credentials in `secrets.yaml`. Run with:
+Requires valid credentials in `tests/secrets.yaml`. Run with:
 ```bash
 python3 tests/test_api_with_real_website.py
 ```
@@ -41,9 +41,12 @@ Available switches:
 - default_eco
 
 ## Configuration
-All scripts that connect to the real website require a `secrets.yaml` file in the root directory with the following structure:
+Copy `tests/secrets.template.yaml` to `tests/secrets.yaml` and add your DeWarmte credentials:
+
 ```yaml
 dewarmte:
   username: "your_username"
   password: "your_password"
-``` 
+```
+
+To deploy the integration to Home Assistant over SMB, use `scripts/deploy-homeassistant.sh` with `deploy.local.yaml` and a **separate** `secrets.yaml` in the **repository root**; see `deploy.local.yaml.example` and `secrets.yaml.example`. 

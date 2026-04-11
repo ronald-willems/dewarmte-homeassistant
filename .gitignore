@@ -41,7 +41,7 @@ ENV/
 Thumbs.db
 
 # Local development
+deploy.local.yaml
 secrets.yaml
-tests/secrets.yaml
 *.har
 tests/*.har

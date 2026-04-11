@@ -16,7 +16,7 @@ This repository is a Home Assistant **custom integration** for DeWarmte (`custom
   - `.github/workflows/validate.yaml`: runs HACS action validation.
 - Docs/tests:
   - `docs/README.md`
-  - `tests/README.md` (includes optional “real website” scripts using `secrets.yaml`)
+  - `tests/README.md` (includes optional “real website” scripts using `tests/secrets.yaml`)
 
 ## Non-negotiables (Home Assistant best practices)
 
@@ -47,7 +47,7 @@ Before implementing anything, read the relevant Home Assistant developer docs an
   - Entities should read from `coordinator.data` and/or cached settings only.
 - **Unique IDs must remain stable**: current entities use `f"{device_id}_{key}"`. If you rename keys, entity ids may change (breaking user dashboards/automations). If you must change entity identity, implement a migration strategy.
 - **Be careful with “AO/MP/PT/HC” device-type gating**: platforms filter entities based on `device.device_type` and some also check `product_id.startswith(("AO ", "MP ", "PT "))`. Maintain backward compatibility unless you can prove it’s safe.
-- **Don’t store secrets**: test scripts may use a local `secrets.yaml`. Never commit credentials; avoid printing secrets to logs.
+- **Don’t store secrets**: test scripts may use a local `tests/secrets.yaml`. Never commit credentials; avoid printing secrets to logs.
 
 ## When editing config flow
 
@@ -82,7 +82,7 @@ Suggested local checks:
 
 Notes:
 
-- `tests/README.md` describes optional scripts that hit the real DeWarmte service using a local `secrets.yaml`. These are for manual verification only.
+- `tests/README.md` describes optional scripts that hit the real DeWarmte service using a local `tests/secrets.yaml`. These are for manual verification only.
 
 ## How to work effectively in this repo (agent guidance)
 
@@ -112,7 +112,7 @@ This repository is a Home Assistant **custom integration** for DeWarmte (`custom
   - `.github/workflows/validate.yaml`: runs HACS action validation.
 - Docs/tests:
   - `docs/README.md`
-  - `tests/README.md` (includes optional “real website” scripts using `secrets.yaml`)
+  - `tests/README.md` (includes optional “real website” scripts using `tests/secrets.yaml`)
 
 ## Non-negotiables (Home Assistant best practices)
 
@@ -143,7 +143,7 @@ Before implementing anything, read the relevant Home Assistant developer docs an
   - Entities should read from `coordinator.data` and/or cached settings only.
 - **Unique IDs must remain stable**: current entities use `f"{device_id}_{key}"`. If you rename keys, entity ids may change (breaking user dashboards/automations). If you must change entity identity, implement a migration strategy.
 - **Be careful with “AO/MP/PT/HC” device-type gating**: platforms filter entities based on `device.device_type` and some also check `product_id.startswith(("AO ", "MP ", "PT "))`. Maintain backward compatibility unless you can prove it’s safe.
-- **Don’t store secrets**: test scripts may use a local `secrets.yaml`. Never commit credentials; avoid printing secrets to logs.
+- **Don’t store secrets**: test scripts may use a local `tests/secrets.yaml`. Never commit credentials; avoid printing secrets to logs.
 
 ## When editing config flow
 
@@ -178,7 +178,7 @@ Suggested local checks:
 
 Notes:
 
-- `tests/README.md` describes optional scripts that hit the real DeWarmte service using a local `secrets.yaml`. These are for manual verification only.
+- `tests/README.md` describes optional scripts that hit the real DeWarmte service using a local `tests/secrets.yaml`. These are for manual verification only.
 
 ## How to work effectively in this repo (agent guidance)
 
@@ -208,7 +208,7 @@ This repository is a Home Assistant **custom integration** for DeWarmte (`custom
   - `.github/workflows/validate.yaml`: runs HACS action validation.
 - Docs/tests:
   - `docs/README.md`
-  - `tests/README.md` (includes optional “real website” scripts using `secrets.yaml`)
+  - `tests/README.md` (includes optional “real website” scripts using `tests/secrets.yaml`)
 
 ## Non-negotiables (Home Assistant best practices)
 
@@ -239,7 +239,7 @@ Before implementing anything, read the relevant Home Assistant developer docs an
   - Entities should read from `coordinator.data` and/or cached settings only.
 - **Unique IDs must remain stable**: current entities use `f"{device_id}_{key}"`. If you rename keys, entity ids may change (breaking user dashboards/automations). If you must change entity identity, implement a migration strategy.
 - **Be careful with “AO/MP/PT/HC” device-type gating**: platforms filter entities based on `device.device_type` and some also check `product_id.startswith(("AO ", "MP ", "PT "))`. Maintain backward compatibility unless you can prove it’s safe.
-- **Don’t store secrets**: test scripts may use a local `secrets.yaml`. Never commit credentials; avoid printing secrets to logs.
+- **Don’t store secrets**: test scripts may use a local `tests/secrets.yaml`. Never commit credentials; avoid printing secrets to logs.
 
 ## When editing config flow
 
@@ -274,7 +274,7 @@ Suggested local checks:
 
 Notes:
 
-- `tests/README.md` describes optional scripts that hit the real DeWarmte service using a local `secrets.yaml`. These are for manual verification only.
+- `tests/README.md` describes optional scripts that hit the real DeWarmte service using a local `tests/secrets.yaml`. These are for manual verification only.
 
 ## How to work effectively in this repo (agent guidance)
 

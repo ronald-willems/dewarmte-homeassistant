@@ -1,0 +1,7 @@
+# Copy to deploy.local.yaml and set your values (deploy.local.yaml is gitignored).
+
+# Home Assistant host (IP is most reliable for SMB).
+ha_samba_host: 192.168.1.10
+
+# Base URL of Home Assistant (same as you use in the browser; no trailing slash required).
+ha_api_url: http://homeassistant.local:8123
