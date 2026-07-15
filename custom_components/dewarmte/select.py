@@ -71,6 +71,7 @@ class CoolingControlMode(str, Enum):
     COOLING_ONLY = "cooling_only"
     HEATING_ONLY = "heating_only"
     FORCED = "forced"
+    SCHEDULED = "scheduled"
 
 @dataclass(frozen=True)
 class DeWarmteSelectEntityDescription(SelectEntityDescription):

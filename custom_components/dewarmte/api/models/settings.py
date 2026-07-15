@@ -36,6 +36,10 @@ class DeviceOperationSettings:
     cooling_temperature: float
     cooling_control_mode: str
     cooling_duration: int
+    cooling_schedules: List[Any]
+    is_force_cooling_active: bool
+    force_cooling_temperature: Optional[float]
+    force_cooling_end: Optional[str]
     heating_performance_mode: str
     heating_performance_backup_temperature: float
     sound_mode: str
@@ -66,10 +70,17 @@ class DeviceOperationSettings:
             advanced_boost_mode_control=bool(data["advanced_boost_mode_control"]),
             advanced_thermostat_delay=data["advanced_thermostat_delay"],
             backup_heating_mode=data["backup_heating_mode"],
-            cooling_thermostat_type=data["cooling_thermostat_type"],
+            # The API renamed this field to `thermostat_type`; the integration
+            # keeps the historical `cooling_thermostat_type` name internally so
+            # entity unique_ids stay stable.
+            cooling_thermostat_type=data["thermostat_type"],
             cooling_temperature=float(data["cooling_temperature"]),
             cooling_control_mode=data["cooling_control_mode"],
             cooling_duration=int(data["cooling_duration"]),
+            cooling_schedules=data["cooling_schedules"],
+            is_force_cooling_active=bool(data["is_force_cooling_active"]),
+            force_cooling_temperature=float(data["force_cooling_temperature"]) if data["force_cooling_temperature"] is not None else None,
+            force_cooling_end=data["force_cooling_end"],
             heating_performance_mode=data["heating_performance_mode"],
             heating_performance_backup_temperature=float(data["heating_performance_backup_temperature"]),
             sound_mode=data["sound_mode"],

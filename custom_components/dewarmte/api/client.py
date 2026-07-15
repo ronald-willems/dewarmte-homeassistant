@@ -239,6 +239,14 @@ class DeWarmteApiClient:
                 update_settings["cooling_control_mode"] = "heating_only"
             elif thermostat_type == "heating_and_cooling" and control_mode in ["cooling_only", "heating_only"]:
                 update_settings["cooling_control_mode"] = "thermostat"
+
+            # The HA entity keeps the historical name `cooling_thermostat_type`
+            # for unique_id stability, but the API renamed this field to
+            # `thermostat_type`. Translate on the way out. Also pass the current
+            # cooling schedule back unchanged: it is part of the request body but
+            # we don't edit schedules from HA, so we must not drop it.
+            update_settings["thermostat_type"] = update_settings.pop("cooling_thermostat_type")
+            update_settings["cooling_schedules"] = current_settings.cooling_schedules
         
         # Handle warm water target temperature - set scheduled=false and create single range
         if group.endpoint == "warm-water" and "warm_water_target_temperature" in update_settings:

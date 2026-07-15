@@ -244,7 +244,7 @@ components:
         backup_heating_mode:
           type: string
           enum: [auto, eco, comfort]
-        cooling_thermostat_type:
+        thermostat_type:
           type: string
           enum: [heating_only, heating_and_cooling]
         cooling_temperature:
@@ -252,9 +252,24 @@ components:
           format: float
         cooling_control_mode:
           type: string
-          enum: [thermostat, manual]
+          enum: [forced, thermostat, scheduled, heating_only, cooling_only]
         cooling_duration:
           type: integer
+        cooling_schedules:
+          type: array
+          description: Weekly per-day cooling time ranges (managed via the web app).
+          items:
+            type: object
+        is_force_cooling_active:
+          type: boolean
+        force_cooling_temperature:
+          type: number
+          format: float
+          nullable: true
+        force_cooling_end:
+          type: string
+          format: date-time
+          nullable: true
         heat_curve:
           $ref: '#/components/schemas/HeatCurveSettings'
         heating_performance_mode:
