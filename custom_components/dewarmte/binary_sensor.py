@@ -55,6 +55,12 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = 
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         device_types=("AO", "PT", "MP"),  # AO/PT/MP only: HC devices don't provide this field
     ),
+    DeWarmteBinarySensorEntityDescription(
+        key="is_element_on",
+        name="Electric Backup",
+        device_class=BinarySensorDeviceClass.HEAT,
+        device_types=("PT",),  # PT-specific: DHW electric backup heating element
+    ),
     # Forced ("cool now") cooling state — read from operation settings, not status.
     DeWarmteBinarySensorEntityDescription(
         key="is_force_cooling_active",

@@ -30,3 +30,13 @@ def test_status_data_handles_missing_numeric_values() -> None:
     assert any("heat_input" in entry for entry in status.invalid_fields)
     assert any("fault_code" in entry for entry in status.invalid_fields)
 
+
+def test_status_data_captures_is_element_on() -> None:
+    """The electric backup element state (from tb-status) must be parsed as bool."""
+    status = StatusData.from_dict({"is_element_on": True})
+    assert status.is_element_on is True
+
+    # Also merges from tb-status style updates and coerces strings.
+    status.update_from_dict({"is_element_on": "false"})
+    assert status.is_element_on is False
+

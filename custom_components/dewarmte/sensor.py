@@ -125,7 +125,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        device_types=("AO", "MP"),  # AO/MP-specific: backup heating for space heating
+        device_types=("AO", "MP", "PT"),  # AO/MP: space-heating backup; PT: DHW electric element
     ),
     # Operational status sensors
     DeWarmteSensorEntityDescription(

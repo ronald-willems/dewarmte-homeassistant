@@ -25,6 +25,8 @@ class StatusData:
     # PT/HC device specific fields (DHW heat pump)
     top_boiler_temp: float | None = None
     bottom_boiler_temp: float | None = None
+    # Electric backup heating element state (from the tb-status endpoint).
+    is_element_on: bool | None = None
 
     # bookkeeping of fields that could not be parsed
     invalid_fields: tuple[str, ...] = field(default_factory=tuple, repr=False)
