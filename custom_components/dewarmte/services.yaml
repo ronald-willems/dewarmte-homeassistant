@@ -3,10 +3,14 @@ start_forced_cooling:
   description: >-
     Immediately start cooling for a fixed duration, overriding the other cooling
     settings until it ends.
-  target:
-    device:
-      integration: dewarmte
   fields:
+    device_id:
+      name: Device
+      description: The DeWarmte device to cool.
+      required: true
+      selector:
+        device:
+          integration: dewarmte
     setpoint:
       name: Setpoint
       description: Target temperature to cool to.
@@ -33,6 +37,11 @@ start_forced_cooling:
 stop_forced_cooling:
   name: Stop forced cooling
   description: Stop an active forced-cooling run.
-  target:
-    device:
-      integration: dewarmte
+  fields:
+    device_id:
+      name: Device
+      description: The DeWarmte device to stop cooling.
+      required: true
+      selector:
+        device:
+          integration: dewarmte
