@@ -25,6 +25,10 @@ class DeWarmteBinarySensorEntityDescription(BinarySensorEntityDescription):
     # Required fields (no default values)
     key: str
     device_types: tuple[str, ...] = ("AO", "PT", "HC")  # Device types this sensor applies to
+    # Where the value lives: "status" -> coordinator.data (polled status),
+    # "settings" -> coordinator._cached_settings (operation settings).
+    source: str = "status"
+    requires_cooling: bool = False  # Only create for cooling-capable devices
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = (
     DeWarmteBinarySensorEntityDescription(
@@ -50,6 +54,15 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = 
         name="Is Connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         device_types=("AO", "PT", "MP"),  # AO/PT/MP only: HC devices don't provide this field
+    ),
+    # Forced ("cool now") cooling state — read from operation settings, not status.
+    DeWarmteBinarySensorEntityDescription(
+        key="is_force_cooling_active",
+        name="Forced Cooling Active",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        device_types=("AO", "MP"),
+        source="settings",
+        requires_cooling=True,
     ),
 )
 
@@ -79,8 +92,13 @@ class DeWarmteBinarySensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Bin
     @property
     def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
-        if self.coordinator.data:
-            value = getattr(self.coordinator.data, self.dewarmte_description.key, None)
+        description = self.dewarmte_description
+        if description.source == "settings":
+            source_obj = getattr(self.coordinator, "_cached_settings", None)
+        else:
+            source_obj = self.coordinator.data
+        if source_obj:
+            value = getattr(source_obj, description.key, None)
             # Convert various possible values to boolean
             if value is None:
                 return None
@@ -104,19 +122,22 @@ async def async_setup_entry(
         coordinators = [coordinators]
 
     for coordinator in coordinators:
-        # Filter binary sensor descriptions based on device type
+        # Filter binary sensor descriptions by device type, and by cooling
+        # support for cooling-only rows.
         filtered_descriptions = [
             description for description in BINARY_SENSOR_DESCRIPTIONS
             if coordinator.device.device_type in description.device_types
+            and (not description.requires_cooling or coordinator.device.supports_cooling)
         ]
-        
+
         # Create binary sensors per device with filtered descriptions
         binary_sensors = [
-            DeWarmteBinarySensor(coordinator, description) 
+            DeWarmteBinarySensor(coordinator, description)
             for description in filtered_descriptions
         ]
+
         _LOGGER.debug("Adding %d binary sensors for device %s (type: %s)",
                      len(binary_sensors),
                      coordinator.device.device_id if coordinator.device else "unknown",
                      coordinator.device.device_type)
-        async_add_entities(binary_sensors) 
+        async_add_entities(binary_sensors)

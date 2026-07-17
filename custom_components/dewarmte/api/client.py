@@ -276,4 +276,27 @@ class DeWarmteApiClient:
                 _LOGGER.debug("%s settings update response: %s", group.endpoint, response_data)
         except Exception as err:
             _LOGGER.error("Error updating %s settings: %s", group.endpoint, str(err))
-            raise 
+            raise
+
+    async def async_start_forced_cooling(
+        self, device: Device, setpoint: float, duration_seconds: int
+    ) -> None:
+        """Start forced ("cool now") cooling for a specific device.
+
+        Forced cooling is a standalone command with its own dedicated endpoint,
+        not part of the regular cooling settings body.
+        """
+        url = f"{self._base_url}/customer/products/{device.device_id}/settings/cooling/start-forced/"
+        payload = {"force_cool_setpoint": setpoint, "forced_duration": duration_seconds}
+        _LOGGER.debug("Making POST request to %s with data: %s", url, payload)
+        result = await self._request_with_retry("POST", url, json=payload)
+        if result is None:
+            raise ValueError("Failed to start forced cooling")
+
+    async def async_stop_forced_cooling(self, device: Device) -> None:
+        """Stop forced ("cool now") cooling for a specific device."""
+        url = f"{self._base_url}/customer/products/{device.device_id}/settings/cooling/stop-forced/"
+        _LOGGER.debug("Making POST request to %s", url)
+        result = await self._request_with_retry("POST", url, json={})
+        if result is None:
+            raise ValueError("Failed to stop forced cooling") 

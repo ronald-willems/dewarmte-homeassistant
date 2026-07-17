@@ -568,4 +568,64 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customer/products/{deviceId}/settings/cooling/start-forced/:
+    parameters:
+      - $ref: '#/components/parameters/deviceId'
+    post:
+      summary: Start forced ("cool now") cooling
+      description: |
+        Immediately start cooling for a fixed duration, overriding the regular
+        cooling settings until it ends.
+      operationId: startForcedCooling
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force_cool_setpoint:
+                  type: number
+                  format: float
+                  description: Target temperature in °C.
+                forced_duration:
+                  type: integer
+                  description: Duration in seconds (e.g. 3600 = 1 hour, 259200 = 3 days).
+              required:
+                - force_cool_setpoint
+                - forced_duration
+      responses:
+        '200':
+          description: Forced cooling started
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customer/products/{deviceId}/settings/cooling/stop-forced/:
+    parameters:
+      - $ref: '#/components/parameters/deviceId'
+    post:
+      summary: Stop forced ("cool now") cooling
+      operationId: stopForcedCooling
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Forced cooling stopped
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
           $ref: '#/components/responses/NotFound' 

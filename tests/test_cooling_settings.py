@@ -7,6 +7,7 @@ settings response and therefore every settings write.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
@@ -137,6 +138,16 @@ def test_from_api_response_reads_new_schema() -> None:
     assert settings.force_cooling_end is None
 
 
+def test_force_cooling_end_parses_to_aware_datetime() -> None:
+    """A populated force_cooling_end must parse to a timezone-aware datetime."""
+    data = {**NEW_SETTINGS, "force_cooling_end": "2026-07-15T21:10:40.511852+02:00"}
+
+    settings = DeviceOperationSettings.from_api_response(data)
+
+    assert isinstance(settings.force_cooling_end, datetime)
+    assert settings.force_cooling_end.tzinfo is not None
+
+
 @pytest.mark.asyncio
 async def test_non_cooling_write_works_after_rename() -> None:
     """A non-cooling write must succeed now that the GET parse no longer crashes.
@@ -168,3 +179,27 @@ async def test_cooling_write_translates_field_and_keeps_schedule() -> None:
     assert "cooling_thermostat_type" not in body
     assert body["cooling_control_mode"] == "cooling_only"
     assert body["cooling_schedules"] == []
+
+
+@pytest.mark.asyncio
+async def test_start_forced_cooling_posts_setpoint_and_duration() -> None:
+    """Forced cooling start must hit start-forced with setpoint + duration."""
+    client, session, device = _make_client()
+
+    await client.async_start_forced_cooling(device, 19.0, 7200)
+
+    url, body = session.posts[-1]
+    assert url.endswith("/settings/cooling/start-forced/")
+    assert body == {"force_cool_setpoint": 19.0, "forced_duration": 7200}
+
+
+@pytest.mark.asyncio
+async def test_stop_forced_cooling_posts_empty_body() -> None:
+    """Forced cooling stop must hit stop-forced with an empty body."""
+    client, session, device = _make_client()
+
+    await client.async_stop_forced_cooling(device)
+
+    url, body = session.posts[-1]
+    assert url.endswith("/settings/cooling/stop-forced/")
+    assert body == {}

@@ -22,6 +22,7 @@ from .api.models.device import Device, DwDeviceInfo
 from .api.models.api_sensor import ApiSensor
 from .const import CONF_UPDATE_INTERVAL, DOMAIN, DEFAULT_UPDATE_INTERVAL
 from .api.models.status_data import StatusData
+from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,6 +86,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.data[DOMAIN][entry.entry_id] = coordinators
 
+        # Register forced-cooling services (idempotent across entries).
+        async_setup_services(hass)
+
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
         return True
@@ -96,6 +100,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
+        # Remove services once the last DeWarmte entry is gone.
+        if not hass.data[DOMAIN]:
+            async_unload_services(hass)
 
     return unload_ok
 

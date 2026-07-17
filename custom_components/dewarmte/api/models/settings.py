@@ -1,5 +1,6 @@
 """Settings models for DeWarmte API."""
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 @dataclass
@@ -39,7 +40,7 @@ class DeviceOperationSettings:
     cooling_schedules: List[Any]
     is_force_cooling_active: bool
     force_cooling_temperature: Optional[float]
-    force_cooling_end: Optional[str]
+    force_cooling_end: Optional[datetime]
     heating_performance_mode: str
     heating_performance_backup_temperature: float
     sound_mode: str
@@ -80,7 +81,7 @@ class DeviceOperationSettings:
             cooling_schedules=data["cooling_schedules"],
             is_force_cooling_active=bool(data["is_force_cooling_active"]),
             force_cooling_temperature=float(data["force_cooling_temperature"]) if data["force_cooling_temperature"] is not None else None,
-            force_cooling_end=data["force_cooling_end"],
+            force_cooling_end=datetime.fromisoformat(data["force_cooling_end"]) if data["force_cooling_end"] is not None else None,
             heating_performance_mode=data["heating_performance_mode"],
             heating_performance_backup_temperature=float(data["heating_performance_backup_temperature"]),
             sound_mode=data["sound_mode"],

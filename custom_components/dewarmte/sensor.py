@@ -48,6 +48,10 @@ class DeWarmteSensorEntityDescription(SensorEntityDescription):
     native_unit_of_measurement: str | None = None
     device_types: tuple[str, ...] = ("AO", "PT")  # Device types this sensor applies to
     suggested_display_precision: int | None = None
+    # Where the value lives: "status" -> coordinator.data (polled status),
+    # "settings" -> coordinator._cached_settings (operation settings).
+    source: str = "status"
+    requires_cooling: bool = False  # Only create for cooling-capable devices
 
 SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     # Status sensors
@@ -149,6 +153,25 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_types=("PT", "HC"),  # PT/HC-specific: boiler bottom temperature
     ),
+    # Forced ("cool now") cooling state — read from operation settings, not status.
+    # Control lives in the dewarmte start/stop_forced_cooling services.
+    DeWarmteSensorEntityDescription(
+        key="force_cooling_temperature",
+        name="Forced Cooling Setpoint",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_types=("AO", "MP"),
+        source="settings",
+        requires_cooling=True,
+    ),
+    DeWarmteSensorEntityDescription(
+        key="force_cooling_end",
+        name="Forced Cooling End",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        device_types=("AO", "MP"),
+        source="settings",
+        requires_cooling=True,
+    ),
 )
 
 @final
@@ -176,9 +199,14 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
     @property
     def native_value(self) -> StateType:  # type: ignore[override]
         """Return the state of the sensor."""
-        if not self.coordinator.data:
+        description = self.dewarmte_description
+        if description.source == "settings":
+            source_obj = getattr(self.coordinator, "_cached_settings", None)
+        else:
+            source_obj = self.coordinator.data
+        if not source_obj:
             return None
-        value = getattr(self.coordinator.data, self.dewarmte_description.key, None)
+        value = getattr(source_obj, description.key, None)
         if value is None:
             return None
         return cast(StateType, value)
@@ -297,21 +325,23 @@ async def async_setup_entry(
         coordinators = [coordinators]
 
     for coordinator in coordinators:
-        # Filter sensor descriptions based on device type
+        # Filter sensor descriptions by device type, and by cooling support for
+        # cooling-only rows.
         filtered_descriptions = [
             description for description in SENSOR_DESCRIPTIONS
             if coordinator.device.device_type in description.device_types
+            and (not description.requires_cooling or coordinator.device.supports_cooling)
         ]
-        
+
         # Create regular sensors per device with filtered descriptions
         regular_sensors = [DeWarmteSensor(coordinator, description) for description in filtered_descriptions]
-        _LOGGER.debug("Adding %d regular sensors for device %s (type: %s)", 
-                     len(regular_sensors), 
+        _LOGGER.debug("Adding %d regular sensors for device %s (type: %s)",
+                     len(regular_sensors),
                      coordinator.device.device_id if coordinator.device else "unknown",
                      coordinator.device.device_type)
         async_add_entities(regular_sensors)
 
-        # Wait for sensors to be registered; arbitrary number of seconds. 
+        # Wait for sensors to be registered; arbitrary number of seconds.
         await asyncio.sleep(0.7)
 
         # Then create energy sensors for power sensors per device
