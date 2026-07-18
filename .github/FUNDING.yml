@@ -1,0 +1,3 @@
+# Shows a "Sponsor" button on the GitHub repo page.
+# bunq is not a built-in platform, so we use the custom URL field.
+custom: ["https://bunq.me/ronaldwillems"]

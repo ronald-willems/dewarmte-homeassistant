@@ -30,4 +30,6 @@ _Track your heat pump's energy consumption over time_
 
 ## Support
 
-Having issues? Report them in the [GitHub repository](https://github.com/ronald-willems/dewarmte-homeassistant/issues). 
+Having issues? Report them in the [GitHub repository](https://github.com/ronald-willems/dewarmte-homeassistant/issues).
+
+Enjoying the integration? You can [buy me a coffee ☕](https://bunq.me/ronaldwillems) — appreciated but never required!
