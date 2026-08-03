@@ -103,6 +103,15 @@ bash scripts/ha-logs.sh writes     # settings-write trail (POST bodies + respons
 
 **Investigating a DeWarmte API change:** the web app at `mydewarmte.com` is a Flutter app. Fetch `https://mydewarmte.com/main.dart.js` and grep it for field names / endpoint paths (e.g. `settings/`, `thermostat_type`, `start-forced`) to see the current request/response schema the official client uses.
 
+**Which values does a settings field accept?** The backend is Django REST Framework, so an authenticated `OPTIONS` on a write endpoint returns the field metadata — including the authoritative list of choices, without writing anything:
+
+```
+OPTIONS /v1/customer/products/{deviceId}/settings/cooling/
+  -> actions.POST.cooling_control_mode.choices = [scheduled, thermostat, heating_only, cooling_only]
+```
+
+Use this before assuming an enum value is valid: these vocabularies change (`manual` was retired around May 2025, `forced` some time after — see the `cooling_control_mode` note in `openapi.yaml`). Only the write endpoints expose `actions`; `OPTIONS` on the read-only `settings/` returns nothing useful.
+
 ## Testing and validation (local)
 
 This repo’s CI runs:

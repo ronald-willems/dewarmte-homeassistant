@@ -2,8 +2,10 @@
 
 Kept deliberately separate from the entity platforms: these are domain-level
 services that target a device (via the HA device registry) and drive the
-forced-cooling API directly. The `switch.forced_cooling` entity covers simple
-on/off; these services add setpoint/duration control.
+forced-cooling API directly. Forced cooling needs a setpoint plus a duration,
+which no single entity can express, and it is deliberately *not* a value of the
+`cooling_control_mode` select — the API rejects "forced" there. The read-side
+state lives in the "Forced Cooling Active/Setpoint/End" entities.
 """
 from __future__ import annotations
 

@@ -252,6 +252,17 @@ components:
           format: float
         cooling_control_mode:
           type: string
+          description: >-
+            `forced` is no longer writable. `OPTIONS settings/cooling/` reports
+            the accepted choices as scheduled, thermostat, heating_only and
+            cooling_only; POSTing `forced` returns HTTP 400
+            `{"cooling_control_mode": ["\"forced\" is not a valid choice."]}`.
+            It appears to be a legacy value: forced ("cool now") cooling now has
+            its own start-forced/stop-forced endpoints and is reported through
+            is_force_cooling_active, which changes independently of this field.
+            Note this field's vocabulary has changed before (`manual` was
+            replaced by cooling_only/heating_only around May 2025) - query
+            OPTIONS to confirm the current choices.
           enum: [forced, thermostat, scheduled, heating_only, cooling_only]
         cooling_duration:
           type: integer

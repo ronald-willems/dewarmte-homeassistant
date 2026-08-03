@@ -48,6 +48,36 @@
             }
         }
     },
+    "services": {
+        "start_forced_cooling": {
+            "name": "Start forced cooling",
+            "description": "Immediately start cooling for a fixed duration, overriding the other cooling settings until it ends.",
+            "fields": {
+                "device_id": {
+                    "name": "Device",
+                    "description": "The DeWarmte device to cool."
+                },
+                "setpoint": {
+                    "name": "Setpoint",
+                    "description": "Target temperature to cool to."
+                },
+                "duration_hours": {
+                    "name": "Duration",
+                    "description": "How long to keep cooling, in hours."
+                }
+            }
+        },
+        "stop_forced_cooling": {
+            "name": "Stop forced cooling",
+            "description": "Stop an active forced-cooling run.",
+            "fields": {
+                "device_id": {
+                    "name": "Device",
+                    "description": "The DeWarmte device to stop cooling."
+                }
+            }
+        }
+    },
     "entity": {
         "switch": {
             "default_heating": {

@@ -68,12 +68,25 @@ class CoolingThermostatType(str, Enum):
     HEATING_AND_COOLING = "heating_and_cooling"
 
 class CoolingControlMode(str, Enum):
-    """Cooling control mode settings."""
+    """Cooling control mode values known to the API.
+
+    `FORCED` is listed for completeness but cannot be written: the cooling
+    settings endpoint answers HTTP 400 `"forced" is not a valid choice.` for it.
+    See SELECTABLE_COOLING_CONTROL_MODES.
+    """
     THERMOSTAT = "thermostat"
     COOLING_ONLY = "cooling_only"
     HEATING_ONLY = "heating_only"
     FORCED = "forced"
     SCHEDULED = "scheduled"
+
+# The modes a user may actually select. Forced ("cool now") cooling is not one
+# of them: it is started and stopped by the dewarmte.start_forced_cooling /
+# dewarmte.stop_forced_cooling services and reported by the "Forced Cooling
+# Active" binary sensor, independent of this setting.
+SELECTABLE_COOLING_CONTROL_MODES = [
+    mode.value for mode in CoolingControlMode if mode is not CoolingControlMode.FORCED
+]
 
 @dataclass(frozen=True)
 class DeWarmteSelectEntityDescription(SelectEntityDescription):
@@ -139,7 +152,7 @@ MODE_SELECTS = {
         key="cooling_control_mode",
         name="Cooling Control Mode",
         options_enum=CoolingControlMode,
-        options=[mode.value for mode in CoolingControlMode],
+        options=SELECTABLE_COOLING_CONTROL_MODES,
     ),
 }
 

@@ -16,6 +16,11 @@ from custom_components.dewarmte.api.client import DeWarmteApiClient, DeWarmteApi
 from custom_components.dewarmte.api.models.config import ConnectionSettings
 from custom_components.dewarmte.api.models.device import Device
 from custom_components.dewarmte.api.models.settings import DeviceOperationSettings
+from custom_components.dewarmte.select import (
+    MODE_SELECTS,
+    SELECTABLE_COOLING_CONTROL_MODES,
+    CoolingControlMode,
+)
 
 
 # A settings payload in the current (post-rename) API shape, mirroring a real
@@ -189,6 +194,23 @@ async def test_cooling_write_translates_field_and_keeps_schedule() -> None:
     assert "cooling_thermostat_type" not in body
     assert body["cooling_control_mode"] == "cooling_only"
     assert body["cooling_schedules"] == []
+
+
+def test_forced_is_not_a_selectable_cooling_control_mode() -> None:
+    """Regression for issue #19.
+
+    The API rejects `cooling_control_mode: forced` with HTTP 400 (`"forced" is
+    not a valid choice.`), so it must not be offered as a select option -
+    forced cooling is driven by the start-forced/stop-forced services.
+    """
+    assert CoolingControlMode.FORCED.value not in SELECTABLE_COOLING_CONTROL_MODES
+    assert SELECTABLE_COOLING_CONTROL_MODES == [
+        "thermostat",
+        "cooling_only",
+        "heating_only",
+        "scheduled",
+    ]
+    assert MODE_SELECTS["cooling_control_mode"].options == SELECTABLE_COOLING_CONTROL_MODES
 
 
 @pytest.mark.asyncio
