@@ -17,6 +17,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
+from .api.client import DeWarmteApiError
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,14 +92,20 @@ def async_setup_services(hass: HomeAssistant) -> None:
         duration_seconds = call.data[ATTR_DURATION_HOURS] * 3600
         setpoint = call.data[ATTR_SETPOINT]
         for coordinator in _coordinators_for_targets(hass, call.data[ATTR_DEVICE_ID]):
-            await coordinator.api.async_start_forced_cooling(
-                coordinator.device, setpoint, duration_seconds
-            )
+            try:
+                await coordinator.api.async_start_forced_cooling(
+                    coordinator.device, setpoint, duration_seconds
+                )
+            except DeWarmteApiError as err:
+                raise HomeAssistantError(str(err)) from err
             await coordinator.async_request_refresh()
 
     async def _handle_stop(call: ServiceCall) -> None:
         for coordinator in _coordinators_for_targets(hass, call.data[ATTR_DEVICE_ID]):
-            await coordinator.api.async_stop_forced_cooling(coordinator.device)
+            try:
+                await coordinator.api.async_stop_forced_cooling(coordinator.device)
+            except DeWarmteApiError as err:
+                raise HomeAssistantError(str(err)) from err
             await coordinator.async_request_refresh()
 
     hass.services.async_register(

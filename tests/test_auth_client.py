@@ -132,6 +132,66 @@ async def test_get_with_retry_handles_401() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_with_retry_returns_none_on_error_status() -> None:
+    """A failing GET must stay a None, not an exception.
+
+    Writes raise DeWarmteApiError so the reason reaches the UI, but reads are
+    best-effort: callers treat None as "no data" and some carry on without it.
+    """
+    session = FakeSession([FakeResponse(500, {"detail": "boom"})])
+    client = DeWarmteApiClient(
+        ConnectionSettings(username="user", password="pass", update_interval=60),
+        session,
+    )
+    client._auth = StubAuth()  # type: ignore[attr-defined]
+
+    assert await client._get_with_retry("https://example.com", retry=False) is None
+
+
+@pytest.mark.asyncio
+async def test_status_data_survives_failing_tb_status_fetch() -> None:
+    """The optional outdoor-temperature fetch must not sink the whole update."""
+    products = {
+        "results": [
+            {
+                "id": "device-1",
+                "status": {
+                    "is_on": False,
+                    "heat_input": 0.0,
+                    "heat_output": 0.0,
+                    "water_flow": 0.0,
+                    "electricity_consumption": 0.0,
+                    "gas_boiler": False,
+                    "thermostat": False,
+                    "supply_temperature": 25.0,
+                    "actual_temperature": 25.0,
+                    "target_temperature": 30.0,
+                    "fault_code": 0,
+                    "electric_backup_usage": 0.0,
+                    "is_connected": True,
+                },
+            }
+        ]
+    }
+    session = FakeSession([FakeResponse(200, products), FakeResponse(500, {"detail": "boom"})])
+    client = DeWarmteApiClient(
+        ConnectionSettings(username="user", password="pass", update_interval=60),
+        session,
+    )
+    client._auth = StubAuth()  # type: ignore[attr-defined]
+    device = Device(
+        device_id="device-1",
+        product_id="AO Test",
+        access_token="token",
+        device_type="AO",
+    )
+
+    status = await client.async_get_status_data(device)
+
+    assert status is not None
+
+
+@pytest.mark.asyncio
 async def test_async_get_status_data_refreshes_before_expiry() -> None:
     """Status fetch should refresh token proactively when near expiry."""
     responses = [

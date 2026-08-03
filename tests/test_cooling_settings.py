@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
-from custom_components.dewarmte.api.client import DeWarmteApiClient
+from custom_components.dewarmte.api.client import DeWarmteApiClient, DeWarmteApiError
 from custom_components.dewarmte.api.models.config import ConnectionSettings
 from custom_components.dewarmte.api.models.device import Device
 from custom_components.dewarmte.api.models.settings import DeviceOperationSettings
@@ -73,10 +73,18 @@ class FakeResponse:
 
 
 class RecordingSession:
-    """Session stub: GET returns a fixed settings payload, POST is recorded."""
+    """Session stub: GET returns a fixed settings payload, POST is recorded.
 
-    def __init__(self, get_payload: Dict[str, Any]) -> None:
+    `post_response` lets a test make the POST fail the way the real API does.
+    """
+
+    def __init__(
+        self,
+        get_payload: Dict[str, Any],
+        post_response: Optional[FakeResponse] = None,
+    ) -> None:
         self._get_payload = get_payload
+        self._post_response = post_response
         self.posts: List[Tuple[str, Optional[Dict[str, Any]]]] = []
 
     def get(self, url: str, *, headers: Optional[Dict[str, str]] = None) -> FakeResponse:
@@ -90,7 +98,7 @@ class RecordingSession:
         json: Optional[Dict[str, Any]] = None,
     ) -> FakeResponse:
         self.posts.append((url, json))
-        return FakeResponse(200, {})
+        return self._post_response or FakeResponse(200, {})
 
 
 class StubAuth:
@@ -111,8 +119,10 @@ class StubAuth:
         return dict(self._headers)
 
 
-def _make_client() -> Tuple[DeWarmteApiClient, RecordingSession, Device]:
-    session = RecordingSession(NEW_SETTINGS)
+def _make_client(
+    post_response: Optional[FakeResponse] = None,
+) -> Tuple[DeWarmteApiClient, RecordingSession, Device]:
+    session = RecordingSession(NEW_SETTINGS, post_response)
     client = DeWarmteApiClient(
         ConnectionSettings(username="user", password="pass", update_interval=60),
         session,
@@ -179,6 +189,33 @@ async def test_cooling_write_translates_field_and_keeps_schedule() -> None:
     assert "cooling_thermostat_type" not in body
     assert body["cooling_control_mode"] == "cooling_only"
     assert body["cooling_schedules"] == []
+
+
+@pytest.mark.asyncio
+async def test_settings_write_error_includes_api_explanation() -> None:
+    """A rejected write must surface the API's reason, not just "failed"."""
+    rejection = {"cooling_control_mode": ['"forced" is not a valid choice.']}
+    client, _session, device = _make_client(post_response=FakeResponse(400, rejection))
+
+    with pytest.raises(DeWarmteApiError) as excinfo:
+        await client.async_update_operation_settings(device, "cooling_temperature", 20.0)
+
+    message = str(excinfo.value)
+    assert "Failed to update cooling settings" in message
+    assert "HTTP 400" in message
+    assert "not a valid choice" in message
+
+
+@pytest.mark.asyncio
+async def test_forced_cooling_start_error_includes_api_explanation() -> None:
+    """Same for the forced-cooling commands."""
+    client, _session, device = _make_client(post_response=FakeResponse(400, {"detail": "nope"}))
+
+    with pytest.raises(DeWarmteApiError, match="Failed to start forced cooling"):
+        await client.async_start_forced_cooling(device, 19.0, 7200)
+
+    with pytest.raises(DeWarmteApiError, match="Failed to stop forced cooling"):
+        await client.async_stop_forced_cooling(device)
 
 
 @pytest.mark.asyncio

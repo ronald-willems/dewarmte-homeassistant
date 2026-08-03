@@ -15,6 +15,16 @@ from .models.status_data import StatusData
 
 _LOGGER = logging.getLogger(__name__)
 
+
+class DeWarmteApiError(Exception):
+    """A request to the DeWarmte API failed.
+
+    Carries the API's own explanation where there is one (e.g. the HTTP 400
+    body saying that 'forced' is not a valid choice for cooling_control_mode)
+    so it reaches the Home Assistant UI instead of a bare "failed".
+    """
+
+
 class DeWarmteApiClient:
     """API client for DeWarmte v1."""
 
@@ -32,22 +42,25 @@ class DeWarmteApiClient:
         url: str,
         retry: bool = True,
         **kwargs: Any,
-    ) -> tuple[int, Dict[str, Any] | None] | None:
+    ) -> tuple[int, Dict[str, Any] | None]:
         """Perform HTTP request with automatic retry on 401 unauthorized.
-        
+
         Args:
             method: HTTP method (GET, POST, PUT, DELETE, etc.)
             url: Request URL
             retry: Whether to retry once on 401
             **kwargs: Additional arguments passed to the session request method
-            
+
         Returns:
-            Tuple of (status_code, json_data) on success, None on failure.
-            json_data will be None if response is not JSON or on error.
+            Tuple of (status_code, json_data). json_data is None if the response
+            is not JSON.
+
+        Raises:
+            DeWarmteApiError: on login failure, transport error, or any non-200
+                response. The message includes the API's own error body.
         """
         if not await self._auth.ensure_token():
-            _LOGGER.error("Cannot perform %s %s without valid login", method, url)
-            return None
+            raise DeWarmteApiError(f"Cannot perform {method} {url} without valid login")
 
         try:
             # Get the appropriate method from session
@@ -57,12 +70,13 @@ class DeWarmteApiClient:
                     _LOGGER.debug("%s %s returned 401; refreshing token and retrying", method, url)
                     self._auth.mark_expired()
                     if not await self._auth.ensure_token(force=True):
-                        return None
+                        raise DeWarmteApiError(f"Could not refresh login for {method} {url}")
                     # Retry the request
                     async with request_method(url, headers=self._auth.headers, **kwargs) as retry_response:
                         if retry_response.status != 200:
-                            _LOGGER.error("Failed to %s %s after retry: %d", method, url, retry_response.status)
-                            return None
+                            raise DeWarmteApiError(
+                                await self._failure_message(method, url, retry_response, retried=True)
+                            )
                         # Read JSON inside context before it closes
                         try:
                             json_data = await retry_response.json()
@@ -71,26 +85,50 @@ class DeWarmteApiClient:
                         return (retry_response.status, json_data)
 
                 if response.status != 200:
-                    _LOGGER.error("Failed to %s %s: %d", method, url, response.status)
+                    message = await self._failure_message(method, url, response)
                     if response.status == 401:
                         self._auth.mark_expired()
-                    return None
+                    raise DeWarmteApiError(message)
                 # Read JSON inside context before it closes
                 try:
                     json_data = await response.json()
                 except Exception:
                     json_data = None
                 return (response.status, json_data)
+        except DeWarmteApiError:
+            raise
         except Exception as err:
-            _LOGGER.error("Error performing %s %s: %s", method, url, err)
-            return None
+            raise DeWarmteApiError(f"Error performing {method} {url}: {err}") from err
+
+    @staticmethod
+    async def _failure_message(method: str, url: str, response: Any, retried: bool = False) -> str:
+        """Build an error message that keeps the API's own explanation."""
+        try:
+            body = (await response.text()).strip()
+        except Exception:
+            body = ""
+        message = (
+            f"Failed to {method} {url}{' after retry' if retried else ''}: "
+            f"HTTP {response.status}"
+        )
+        if body:
+            # Bodies are small validation errors; cap them so a stray HTML error
+            # page cannot flood the log or a UI toast.
+            message = f"{message} {body[:300]}"
+        _LOGGER.error("%s", message)
+        return message
 
     async def _get_with_retry(self, url: str, retry: bool = True) -> Dict[str, Any] | None:
-        """Perform GET request with optional retry on unauthorized."""
-        result = await self._request_with_retry("GET", url, retry=retry)
-        if result is None:
+        """Perform GET request with optional retry on unauthorized.
+
+        Returns None on failure: callers treat a missing GET as "no data" and
+        some (e.g. the optional tb-status fetch) carry on without it.
+        """
+        try:
+            _status, json_data = await self._request_with_retry("GET", url, retry=retry)
+        except DeWarmteApiError as err:
+            _LOGGER.debug("GET %s failed: %s", url, err)
             return None
-        _status, json_data = result
         return json_data
 
     async def async_discover_devices(self) -> list[Device]:
@@ -234,7 +272,7 @@ class DeWarmteApiClient:
         if group.endpoint == "cooling":
             thermostat_type = update_settings.get("cooling_thermostat_type")
             control_mode = update_settings.get("cooling_control_mode")
-            
+
             if thermostat_type == "heating_only" and control_mode == "thermostat":
                 update_settings["cooling_control_mode"] = "heating_only"
             elif thermostat_type == "heating_and_cooling" and control_mode in ["cooling_only", "heating_only"]:
@@ -267,16 +305,12 @@ class DeWarmteApiClient:
         
         _LOGGER.debug("Making POST request to %s with data: %s", url, update_settings)
         try:
-            result = await self._request_with_retry("POST", url, json=update_settings)
-            if result is None:
-                raise ValueError(f"Failed to update {group.endpoint} settings")
-            
-            _status, response_data = result
+            _status, response_data = await self._request_with_retry("POST", url, json=update_settings)
             if response_data is not None:
                 _LOGGER.debug("%s settings update response: %s", group.endpoint, response_data)
-        except Exception as err:
-            _LOGGER.error("Error updating %s settings: %s", group.endpoint, str(err))
-            raise
+        except DeWarmteApiError as err:
+            _LOGGER.error("Error updating %s settings: %s", group.endpoint, err)
+            raise DeWarmteApiError(f"Failed to update {group.endpoint} settings: {err}") from err
 
     async def async_start_forced_cooling(
         self, device: Device, setpoint: float, duration_seconds: int
@@ -289,14 +323,16 @@ class DeWarmteApiClient:
         url = f"{self._base_url}/customer/products/{device.device_id}/settings/cooling/start-forced/"
         payload = {"force_cool_setpoint": setpoint, "forced_duration": duration_seconds}
         _LOGGER.debug("Making POST request to %s with data: %s", url, payload)
-        result = await self._request_with_retry("POST", url, json=payload)
-        if result is None:
-            raise ValueError("Failed to start forced cooling")
+        try:
+            await self._request_with_retry("POST", url, json=payload)
+        except DeWarmteApiError as err:
+            raise DeWarmteApiError(f"Failed to start forced cooling: {err}") from err
 
     async def async_stop_forced_cooling(self, device: Device) -> None:
         """Stop forced ("cool now") cooling for a specific device."""
         url = f"{self._base_url}/customer/products/{device.device_id}/settings/cooling/stop-forced/"
         _LOGGER.debug("Making POST request to %s", url)
-        result = await self._request_with_retry("POST", url, json={})
-        if result is None:
-            raise ValueError("Failed to stop forced cooling") 
+        try:
+            await self._request_with_retry("POST", url, json={})
+        except DeWarmteApiError as err:
+            raise DeWarmteApiError(f"Failed to stop forced cooling: {err}") from err 

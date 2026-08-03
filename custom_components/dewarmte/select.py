@@ -11,11 +11,13 @@ from homeassistant.components.select import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DeWarmteDataUpdateCoordinator
 from .const import DOMAIN
+from .api.client import DeWarmteApiError
 from .api.models.settings import SETTING_GROUPS
 
 class HeatCurveMode(str, Enum):
@@ -208,5 +210,10 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
-        await self.coordinator.api.async_update_operation_settings(self.coordinator.device, self.dewarmte_description.key, option)
-        await self.coordinator.async_request_refresh() 
+        try:
+            await self.coordinator.api.async_update_operation_settings(self.coordinator.device, self.dewarmte_description.key, option)
+        except DeWarmteApiError as err:
+            # Surface the API's reason (e.g. a rejected value) instead of an
+            # "Unexpected error" toast with no explanation.
+            raise HomeAssistantError(str(err)) from err
+        await self.coordinator.async_request_refresh()
