@@ -6,6 +6,7 @@ from typing import Any, Callable, Optional, TypeVar, cast, final
 from datetime import timedelta, datetime
 from decimal import Decimal
 import asyncio
+import inspect
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -226,18 +227,24 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
         if source_sensor.coordinator.update_interval is None:
             raise ValueError("Coordinator update interval is None")
         polling_interval = source_sensor.coordinator.update_interval.total_seconds()
-        
-        super().__init__(
-            source_sensor.hass,
-            source_entity=source_sensor.entity_id,
-            name=f"{source_sensor.name} Energy",
-            unique_id=f"{source_sensor.unique_id}_energy",
-            round_digits=2,
-            unit_time=UnitOfTime.HOURS,  # Use proper enum value
-            unit_prefix=None,  # kWh without additional prefix
-            integration_method="trapezoidal",
-            max_sub_interval=timedelta(seconds=polling_interval * 3),
-        )
+
+        # HA 2026.8 (home-assistant/core#177596) made IntegrationSensor.__init__
+        # keyword-only and dropped the `hass` parameter entirely. Older versions
+        # require `hass` as the first positional-or-keyword argument. Detect at
+        # runtime which signature is installed so this works on both.
+        kwargs: dict[str, Any] = {
+            "source_entity": source_sensor.entity_id,
+            "name": f"{source_sensor.name} Energy",
+            "unique_id": f"{source_sensor.unique_id}_energy",
+            "round_digits": 2,
+            "unit_time": UnitOfTime.HOURS,  # Use proper enum value
+            "unit_prefix": None,  # kWh without additional prefix
+            "integration_method": "trapezoidal",
+            "max_sub_interval": timedelta(seconds=polling_interval * 3),
+        }
+        if "hass" in inspect.signature(IntegrationSensor.__init__).parameters:
+            kwargs["hass"] = source_sensor.hass
+        super().__init__(**kwargs)
         self._attr_device_info = source_sensor.coordinator.device_info
         self._source_sensor = source_sensor
 
