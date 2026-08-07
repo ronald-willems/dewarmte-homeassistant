@@ -61,15 +61,8 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = 
         device_class=BinarySensorDeviceClass.HEAT,
         device_types=("PT",),  # PT-specific: DHW electric backup heating element
     ),
-    # Forced ("cool now") cooling state — read from operation settings, not status.
-    DeWarmteBinarySensorEntityDescription(
-        key="is_force_cooling_active",
-        name="Forced Cooling Active",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        device_types=("AO", "MP"),
-        source="settings",
-        requires_cooling=True,
-    ),
+    # Forced ("cool now") cooling state is exposed by the writable
+    # `switch.<device>_forced_cooling` entity instead of a read-only sensor.
 )
 
 class DeWarmteBinarySensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], BinarySensorEntity): # type: ignore[override]
