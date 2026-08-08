@@ -203,29 +203,41 @@ components:
         Body of `POST settings/heat-curve/`. The field names are the same flat
         `heat_curve_*` names used in DeviceSettings (verified against the web
         app's own write body - it does not use a nested object or short names).
+        Bounds and enums below are the backend's own, read from
+        `OPTIONS settings/heat-curve/` -> `actions.POST` (2026-08-08).
       properties:
         heat_curve_mode:
           type: string
           enum: [weather, fixed]
         heating_kind:
           type: string
-          enum: [default, custom]
+          enum: [radiator, floor, both, custom]
         heat_curve_s1_outside_temp:
           type: number
           format: float
+          minimum: -10
+          maximum: 15
         heat_curve_s1_target_temp:
           type: number
           format: float
+          minimum: 25
+          maximum: 70
         heat_curve_s2_outside_temp:
           type: number
           format: float
+          minimum: -10
+          maximum: 15
         heat_curve_s2_target_temp:
           type: number
           format: float
+          minimum: 25
+          maximum: 70
         heat_curve_fixed_temperature:
           type: number
           format: float
           nullable: true
+          minimum: 25
+          maximum: 70
         heat_curve_use_smart_correction:
           type: boolean
       required:
@@ -298,7 +310,7 @@ components:
           enum: [weather, fixed]
         heating_kind:
           type: string
-          enum: [default, custom]
+          enum: [radiator, floor, both, custom]
         heat_curve_s1_outside_temp:
           type: number
           format: float

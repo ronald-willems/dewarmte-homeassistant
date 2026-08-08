@@ -22,8 +22,11 @@ from .api.models.settings import SETTING_GROUPS
 # Temperature constants
 MIN_OUTSIDE_TEMP = -10.0
 MAX_OUTSIDE_TEMP = 15.0
-MIN_TARGET_TEMP = 0.0
-MAX_TARGET_TEMP = 60.0
+# Heat curve target temps: bounds are the backend's own, from
+# OPTIONS settings/heat-curve/ -> actions.POST.heat_curve_s1_target_temp
+# (min_value 25, max_value 70; same for s2 and fixed_temperature).
+MIN_TARGET_TEMP = 25.0
+MAX_TARGET_TEMP = 70.0
 MIN_BACKUP_TEMP = -25.0
 MAX_BACKUP_TEMP = 10.0
 MIN_COOLING_TEMP = 10.0
