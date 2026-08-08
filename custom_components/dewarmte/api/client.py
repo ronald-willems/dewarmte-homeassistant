@@ -115,19 +115,21 @@ class DeWarmteApiClient:
             # Bodies are small validation errors; cap them so a stray HTML error
             # page cannot flood the log or a UI toast.
             message = f"{message} {body[:300]}"
-        _LOGGER.error("%s", message)
         return message
 
     async def _get_with_retry(self, url: str, retry: bool = True) -> Dict[str, Any] | None:
         """Perform GET request with optional retry on unauthorized.
 
         Returns None on failure: callers treat a missing GET as "no data" and
-        some (e.g. the optional tb-status fetch) carry on without it.
+        some (e.g. the optional tb-status fetch) carry on without it. Because
+        that is silent by design -- a failed settings GET just empties every
+        number/select/switch entity -- log it at WARNING so the cause is visible
+        without the user having to enable debug logging first.
         """
         try:
             _status, json_data = await self._request_with_retry("GET", url, retry=retry)
         except DeWarmteApiError as err:
-            _LOGGER.debug("GET %s failed: %s", url, err)
+            _LOGGER.warning("GET %s failed: %s", url, err)
             return None
         return json_data
 

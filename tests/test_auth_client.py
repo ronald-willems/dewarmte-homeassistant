@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -132,11 +133,13 @@ async def test_get_with_retry_handles_401() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_with_retry_returns_none_on_error_status() -> None:
+async def test_get_with_retry_returns_none_on_error_status(caplog) -> None:
     """A failing GET must stay a None, not an exception.
 
     Writes raise DeWarmteApiError so the reason reaches the UI, but reads are
     best-effort: callers treat None as "no data" and some carry on without it.
+    It must still be visible without debug logging: a failed settings GET
+    silently empties every number/select/switch entity.
     """
     session = FakeSession([FakeResponse(500, {"detail": "boom"})])
     client = DeWarmteApiClient(
@@ -145,7 +148,13 @@ async def test_get_with_retry_returns_none_on_error_status() -> None:
     )
     client._auth = StubAuth()  # type: ignore[attr-defined]
 
-    assert await client._get_with_retry("https://example.com", retry=False) is None
+    with caplog.at_level(logging.WARNING):
+        assert await client._get_with_retry("https://example.com", retry=False) is None
+
+    assert any(
+        record.levelno == logging.WARNING and "boom" in record.getMessage()
+        for record in caplog.records
+    ), "a failed GET must be logged at WARNING, including the API's reason"
 
 
 @pytest.mark.asyncio
