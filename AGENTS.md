@@ -16,6 +16,7 @@ This repository is a Home Assistant **custom integration** for DeWarmte (`custom
   - `.github/workflows/validate.yaml`: runs HACS action validation.
 - Docs/tests:
   - `docs/README.md`
+  - `docs/WEBAPP_SCHEMA.md`: what the official web app requires from the settings API (required vs nullable fields, write bodies) — the reference when a user's payload differs from yours.
   - `tests/README.md` (includes optional “real website” scripts using `tests/secrets.yaml`)
 
 ## Non-negotiables (Home Assistant best practices)
@@ -101,7 +102,16 @@ bash scripts/ha-logs.sh writes     # settings-write trail (POST bodies + respons
   `POST /api/services/logger/set_level` body `{"custom_components.dewarmte":"debug"}`.
 - A HAR file cannot capture HA's traffic (HA is a backend, not a browser); use the logs. HARs only capture the mydewarmte.com web app in a browser.
 
-**Investigating a DeWarmte API change:** the web app at `mydewarmte.com` is a Flutter app. Fetch `https://mydewarmte.com/main.dart.js` and grep it for field names / endpoint paths (e.g. `settings/`, `thermostat_type`, `start-forced`) to see the current request/response schema the official client uses.
+**5. Check what the official client expects**
+```bash
+python scripts/extract-webapp-schema.py            # required/nullable per field + write bodies
+python scripts/extract-webapp-schema.py --dump     # + the raw deserializer
+```
+The web app at `mydewarmte.com` is a Flutter app, so `main.dart.js` contains the official client's own settings model. The script pulls out which fields it treats as required, which it accepts as null, and what it POSTs to each `settings/*` endpoint, and compares that against our `from_api_response`. Needs no credentials.
+
+- **Use it when** a user reports breakage you cannot reproduce on your own account (e.g. a pump type or capability you don't own). If the official app requires a field, the API must be sending it — otherwise the web app would break for those users too, which is strong evidence against "the API omits this for my setup".
+- Findings are written up in `docs/WEBAPP_SCHEMA.md` (with the bundle's sha256/date) and folded into `api/openapi.yaml`. Re-run the script and update both when the hash no longer matches.
+- **Never commit `main.dart.js`**: 4.6 MB of minified output, re-minified on every DeWarmte deploy, so symbol names (`u0`, `A.md`, `B.K6`) change and diffs are noise. The script hardcodes none of them — it finds the model by the field names it reads.
 
 **Which values does a settings field accept?** The backend is Django REST Framework, so an authenticated `OPTIONS` on a write endpoint returns the field metadata — including the authoritative list of choices, without writing anything:
 

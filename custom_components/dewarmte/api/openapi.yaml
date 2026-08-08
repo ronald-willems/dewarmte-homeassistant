@@ -199,42 +199,54 @@ components:
 
     HeatCurveSettings:
       type: object
+      description: >-
+        Body of `POST settings/heat-curve/`. The field names are the same flat
+        `heat_curve_*` names used in DeviceSettings (verified against the web
+        app's own write body - it does not use a nested object or short names).
       properties:
-        mode:
+        heat_curve_mode:
           type: string
           enum: [weather, fixed]
         heating_kind:
           type: string
           enum: [default, custom]
-        s1_outside_temp:
+        heat_curve_s1_outside_temp:
           type: number
           format: float
-        s1_target_temp:
+        heat_curve_s1_target_temp:
           type: number
           format: float
-        s2_outside_temp:
+        heat_curve_s2_outside_temp:
           type: number
           format: float
-        s2_target_temp:
+        heat_curve_s2_target_temp:
           type: number
           format: float
-        fixed_temperature:
+        heat_curve_fixed_temperature:
           type: number
           format: float
-        use_smart_correction:
+          nullable: true
+        heat_curve_use_smart_correction:
           type: boolean
       required:
-        - mode
+        - heat_curve_mode
         - heating_kind
-        - s1_outside_temp
-        - s1_target_temp
-        - s2_outside_temp
-        - s2_target_temp
-        - fixed_temperature
-        - use_smart_correction
+        - heat_curve_s1_outside_temp
+        - heat_curve_s1_target_temp
+        - heat_curve_s2_outside_temp
+        - heat_curve_s2_target_temp
+        - heat_curve_fixed_temperature
+        - heat_curve_use_smart_correction
 
     DeviceSettings:
       type: object
+      description: >-
+        Returned by `GET settings/` and by every settings write. One schema for
+        all product types - the official web app parses all of them with a single
+        model and does not vary it by product type or by the product's `cooling`
+        flag. The `required` list below mirrors that model: those fields make it
+        throw when absent or null. See docs/WEBAPP_SCHEMA.md for how this was
+        established and how to re-check it.
       properties:
         advanced_boost_mode_control:
           type: boolean
@@ -281,8 +293,30 @@ components:
           type: string
           format: date-time
           nullable: true
-        heat_curve:
-          $ref: '#/components/schemas/HeatCurveSettings'
+        heat_curve_mode:
+          type: string
+          enum: [weather, fixed]
+        heating_kind:
+          type: string
+          enum: [default, custom]
+        heat_curve_s1_outside_temp:
+          type: number
+          format: float
+        heat_curve_s1_target_temp:
+          type: number
+          format: float
+        heat_curve_s2_outside_temp:
+          type: number
+          format: float
+        heat_curve_s2_target_temp:
+          type: number
+          format: float
+        heat_curve_fixed_temperature:
+          type: number
+          format: float
+          nullable: true
+        heat_curve_use_smart_correction:
+          type: boolean
         heating_performance_mode:
           type: string
           enum: [auto, pomp_ao_only, pomp_ao_and_backup, backup_only]
@@ -306,8 +340,43 @@ components:
             $ref: '#/components/schemas/WarmWaterRange'
         version:
           type: integer
+        state:
+          type: string
+          description: >-
+            Rollout state of this settings version (e.g. `applied`). The web app
+            reads this; the integration reads the boolean `is_applied` instead.
         is_applied:
           type: boolean
+      required:
+        # Mirrors the official web app's model: it throws on any of these being
+        # absent or null. Notably `thermostat_type` and the rest of the cooling
+        # block are required for every product, cooling-capable or not - the app
+        # has no non-cooling variant of this schema.
+        - advanced_boost_mode_control
+        - advanced_thermostat_delay
+        - backup_heating_mode
+        - thermostat_type
+        - cooling_control_mode
+        - cooling_temperature
+        - cooling_duration
+        - cooling_schedules
+        - is_force_cooling_active
+        - heat_curve_mode
+        - heating_kind
+        - heat_curve_s1_outside_temp
+        - heat_curve_s1_target_temp
+        - heat_curve_s2_outside_temp
+        - heat_curve_s2_target_temp
+        - heat_curve_use_smart_correction
+        - heating_performance_mode
+        - heating_performance_backup_temperature
+        - sound_mode
+        - sound_compressor_power
+        - sound_fan_speed
+        - warm_water_is_scheduled
+        - warm_water_ranges
+        - version
+        - state
 
   responses:
     BadRequest:
