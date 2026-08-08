@@ -122,6 +122,20 @@ OPTIONS /v1/customer/products/{deviceId}/settings/cooling/
 
 Use this before assuming an enum value is valid: these vocabularies change (`manual` was retired around May 2025, `forced` some time after — see the `cooling_control_mode` note in `openapi.yaml`). Only the write endpoints expose `actions`; `OPTIONS` on the read-only `settings/` returns nothing useful.
 
+## When a user reports a bug
+
+Users of this integration run hardware and accounts we cannot see: other pump types, other capabilities, other HA versions, installs updated through HACS rather than from source. That makes reports valuable and unverifiable at the same time. Work them in this order.
+
+- **A report is a hypothesis, not a diagnosis.** Separate what the user *observed* (an error line, an entity stuck at `unknown`) from what they *concluded* ("the API must omit this field for my setup"). The observation is evidence; the conclusion is a guess, however confidently written and however plausible it sounds. Reporters usually have not read the source.
+- **Prove the mechanism before changing anything.** You must be able to point at the line in the released code that produces the exact reported symptom. If you cannot explain how that version produces that error, you do not understand the bug yet, and any fix is a guess dressed as a fix. `git show <tag>:<file>` and a diff between the working and broken tags are usually enough to confirm or kill a theory in minutes.
+- **Verify they are running the code they think they are.** A reported version number is metadata, not proof of what sits on disk — updates can fail partially, and rollbacks may not restore what the user expects. If a symptom is *impossible* for the source at that tag, suspect the install first and ask for a clean reinstall.
+- **Ask for raw evidence, not more opinion.** Request the exact log line and the payload behind it (`custom_components.dewarmte: debug`, then the `Operation settings data:` line), and name the lines you want so the user doesn't have to guess. One payload usually ends the discussion faster than a round of theorising.
+- **Use the evidence sources that don't need their hardware.** `scripts/probe-dewarmte-api.py` (does the live API still parse?), `scripts/extract-webapp-schema.py` + `docs/WEBAPP_SCHEMA.md` (what does the official client require?), and `OPTIONS` on a write endpoint (which values are valid?). If the official web app requires a field, the API sends it — that alone refutes most "the API omits X for my setup" theories.
+- **Do not write defensive code "just to be safe".** Tolerance for a payload nobody has ever seen is permanent complexity paid for with a guess, and it usually has to stay forever because no one can prove it is unneeded. No evidence, no change.
+- **Loud, specific failures are an asset — don't trade them away.** An exception naming the exact field is what makes a report diagnosable at all. Replacing strict access with silent fallbacks converts a precise failure into a vague one and makes the *next* report harder to solve. Prefer making a failure more visible (log level, error text) over making it survivable.
+- **Separate the two kinds of fix.** A change justified independently of the report — better logging, a genuinely missing guard — can land immediately. A change that only makes sense if the report's hypothesis is true must wait for evidence. Say which kind you are proposing.
+- **Close the loop in public.** If it turns out not to be a bug, say so on the issue with the reasoning and the actual cause. The next person to search that error message should land on the answer, not on an open issue that implies the code is broken.
+
 ## Testing and validation (local)
 
 This repo’s CI runs:
