@@ -205,6 +205,24 @@ components:
         app's own write body - it does not use a nested object or short names).
         Bounds and enums below are the backend's own, read from
         `OPTIONS settings/heat-curve/` -> `actions.POST` (2026-08-08).
+
+        Cross-field rules the backend enforces but `OPTIONS` does not report
+        (all return HTTP 400 with `non_field_errors`, verified live 2026-08-08):
+
+          1. `weather` mode requires `heating_kind` in the body.
+          2. `heating_kind: custom` requires all four s1/s2 outside+target fields.
+          3. `heat_curve_s1_target_temp` must be *strictly greater than*
+             `heat_curve_s2_target_temp`. The message reads "must be larger than
+             or equal to", but equal values are rejected - the message is wrong,
+             not the behaviour.
+
+        Rules 1 and 2 mean mode and curve cannot be split across two requests, so
+        a partial body is never a way around rule 3. This matters because writing
+        `heat_curve_mode: fixed` makes the cloud overwrite the stored curve -
+        both targets become `heat_curve_fixed_temperature` and the outside temps
+        collapse to -10/15 - which leaves s1 == s2 and therefore makes the switch
+        back to `weather` impossible without correcting the curve in the same
+        POST. See the guard in `client._update_settings` (issue #22).
       properties:
         heat_curve_mode:
           type: string

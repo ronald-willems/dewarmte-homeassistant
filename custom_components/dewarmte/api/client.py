@@ -270,6 +270,24 @@ class DeWarmteApiClient:
         # Update with new value
         update_settings[key] = value
 
+        # Escape the fixed -> weather catch-22 (issue #22).
+        if (
+            group.endpoint == "heat-curve"
+            and key == "heat_curve_mode"
+            and value == "weather"
+        ):
+            s1_target = update_settings["heat_curve_s1_target_temp"]
+            s2_target = update_settings["heat_curve_s2_target_temp"]
+            if s1_target <= s2_target:
+                update_settings["heat_curve_s1_target_temp"] = s2_target + 1
+                _LOGGER.info(
+                    "Switching to weather mode: S1 target must be above S2, and both are "
+                    "%s because the cloud tied them to the fixed temperature. Raising S1 "
+                    "to %s; the resulting curve is flat, so set your own S1/S2 values.",
+                    s1_target,
+                    s2_target + 1,
+                )
+
         # Adjust cooling settings if needed
         if group.endpoint == "cooling":
             thermostat_type = update_settings.get("cooling_thermostat_type")
