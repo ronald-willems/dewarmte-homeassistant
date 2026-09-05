@@ -212,9 +212,4 @@ class DeWarmteNumberEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Num
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
-        key = self.dewarmte_description.key
-        
-        # Standard handling for all number entities
-        await self.coordinator.api.async_update_operation_settings(self.coordinator.device, key, value)
-            
-        await self.coordinator.async_request_refresh() 
+        await self.coordinator.async_write_setting(self.dewarmte_description.key, value) 

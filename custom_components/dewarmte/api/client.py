@@ -236,23 +236,28 @@ class DeWarmteApiClient:
             _LOGGER.error("Error getting operation settings: %s", str(err))
             return None
 
-    async def async_update_operation_settings(self, device: Device, key: str, value: Union[float, str, int, bool]) -> None:
-        """Update a single operation setting for a specific device."""
+    async def async_update_operation_settings(
+        self, device: Device, key: str, value: Union[float, str, int, bool]
+    ) -> DeviceOperationSettings | None:
+        """Update a single operation setting for a specific device.
+
+        Returns the settings as they stand after the write, read from the API's
+        own response, or None when that response could not be used.
+        """
         _LOGGER.debug("Updating operation setting %s to %s", key, value)
 
         # Find which group this setting belongs to
         for group in SETTING_GROUPS.values():
             if key in group.keys:
                 _LOGGER.debug("Found setting group %s for key %s", group.endpoint, key)
-                await self._update_settings(device, group, key, value)
-                return
+                return await self._update_settings(device, group, key, value)
 
         raise ValueError(
             f"Unable to change setting {key}. "
             "Please report this as a bug."
         )
 
-    async def _update_settings(self, device: Device, group: SettingsGroup, key: str, value: Any) -> None:
+    async def _update_settings(self, device: Device, group: SettingsGroup, key: str, value: Any) -> DeviceOperationSettings | None:
         """Common logic for updating settings for a specific device."""
         url = f"{self._base_url}/customer/products/{device.device_id}/settings/{group.endpoint}/"
         
@@ -326,11 +331,23 @@ class DeWarmteApiClient:
         _LOGGER.debug("Making POST request to %s with data: %s", url, update_settings)
         try:
             _status, response_data = await self._request_with_retry("POST", url, json=update_settings)
-            if response_data is not None:
-                _LOGGER.debug("%s settings update response: %s", group.endpoint, response_data)
         except DeWarmteApiError as err:
             _LOGGER.error("Error updating %s settings: %s", group.endpoint, err)
             raise DeWarmteApiError(f"Failed to update {group.endpoint} settings: {err}") from err
+
+        if response_data is None:
+            return None
+        _LOGGER.debug("%s settings update response: %s", group.endpoint, response_data)
+
+        # A write is answered with the complete new settings object, so callers
+        # can show the new state without polling for it.
+        try:
+            return DeviceOperationSettings.from_api_response(response_data)
+        except Exception as err:
+            # The write itself succeeded - only the echo was unusable - so this
+            # must not look like a failed action. Callers fall back to polling.
+            _LOGGER.warning("Could not parse the %s settings response: %s", group.endpoint, err)
+            return None
 
     async def async_start_forced_cooling(
         self, device: Device, setpoint: float, duration_seconds: int

@@ -158,6 +158,24 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
             _LOGGER.error("Error updating data: %s", str(exception))
             raise UpdateFailed() from exception
 
+    async def async_write_setting(self, key: str, value: Any) -> None:
+        """Write one setting and publish the result to the entities.
+
+        The API answers a settings write with the complete new settings object,
+        so publishing that response updates every entity immediately. Polling
+        instead would cost three more GETs, and because async_request_refresh is
+        debounced it can leave the UI stale for up to ten seconds when several
+        values are changed in a row.
+        """
+        settings = await self.api.async_update_operation_settings(self.device, key, value)
+        if settings is None:
+            # No usable response; poll for the truth instead.
+            await self.async_request_refresh()
+            return
+
+        self._cached_settings = settings
+        self.async_update_listeners()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""

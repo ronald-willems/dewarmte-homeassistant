@@ -224,9 +224,8 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         try:
-            await self.coordinator.api.async_update_operation_settings(self.coordinator.device, self.dewarmte_description.key, option)
+            await self.coordinator.async_write_setting(self.dewarmte_description.key, option)
         except DeWarmteApiError as err:
             # Surface the API's reason (e.g. a rejected value) instead of an
             # "Unexpected error" toast with no explanation.
             raise HomeAssistantError(str(err)) from err
-        await self.coordinator.async_request_refresh()
