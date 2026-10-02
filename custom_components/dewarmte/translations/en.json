@@ -26,7 +26,8 @@
             "init": {
                 "menu_options": {
                     "update_interval": "Update interval",
-                    "credentials": "Credentials"
+                    "credentials": "Credentials",
+                    "energy_history": "Energy history import (experimental)"
                 },
                 "description": "What would you like to change?",
                 "title": "DeWarmte Options"
@@ -45,6 +46,18 @@
                 },
                 "description": "Enter your MyDeWarmte credentials.",
                 "title": "Credentials"
+            },
+            "energy_history": {
+                "title": "Energy history import (experimental)",
+                "description": "Copy DeWarmte's own hourly energy history into Home Assistant as long-term statistics named \"dewarmte:...\". They are separate from the live *_energy sensors, which estimate the same thing by integrating power. Pick one or the other in the Energy dashboard — adding both double-counts.\n\nSwitching this on starts the import in the background; the first run covers every year the portal has and can take several minutes per device.",
+                "data": {
+                    "import_energy_history": "Import energy history from DeWarmte",
+                    "delete_energy_history": "Delete all previously imported history"
+                },
+                "data_description": {
+                    "import_energy_history": "Keeps importing each hour as it completes.",
+                    "delete_energy_history": "Removes the \"dewarmte:...\" statistics. Applied when you submit; the import can be switched back on later to rebuild them."
+                }
             }
         }
     },
@@ -131,4 +144,4 @@
             }
         }
     }
-} 
+}

@@ -10,7 +10,8 @@
   "config_flow": true,
   "dependencies": [
     "climate",
-    "sensor"
+    "sensor",
+    "recorder"
   ],
   "documentation": "https://github.com/ronald-willems/dewarmte-homeassistant",
   "homekit": {},

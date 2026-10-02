@@ -14,7 +14,14 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api.client import DeWarmteApiClient
 from .api.models.config import ConnectionSettings
-from .const import CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL, DOMAIN
+from .energy_history import async_delete_history
+from .const import (
+    CONF_DELETE_ENERGY_HISTORY,
+    CONF_IMPORT_ENERGY_HISTORY,
+    CONF_UPDATE_INTERVAL,
+    DEFAULT_UPDATE_INTERVAL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -112,7 +119,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Show the menu."""
         return self.async_show_menu(
             step_id="init",
-            menu_options=["update_interval", "credentials"],
+            menu_options=["update_interval", "credentials", "energy_history"],
         )
 
     async def async_step_update_interval(
@@ -137,6 +144,44 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             }
         )
         return self.async_show_form(step_id="update_interval", data_schema=schema)
+
+    async def async_step_energy_history(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Turn the experimental energy-history import on or off.
+
+        Submitting reloads the entry (see the update listener), and setup starts
+        the import when the option is on -- so switching it on here is what
+        kicks off the first, long, catch-up run.
+        """
+        if user_input is not None:
+            if user_input.get(CONF_DELETE_ENERGY_HISTORY):
+                for coordinator in self.hass.data[DOMAIN].get(
+                    self._config_entry.entry_id, []
+                ):
+                    if coordinator.device is not None:
+                        async_delete_history(self.hass, coordinator.device)
+
+            updated_options = {
+                **self._config_entry.options,
+                CONF_IMPORT_ENERGY_HISTORY: user_input[CONF_IMPORT_ENERGY_HISTORY],
+            }
+            # Deleting is a one-off action, not a setting; never persist it.
+            updated_options.pop(CONF_DELETE_ENERGY_HISTORY, None)
+            return self.async_create_entry(title="", data=updated_options)
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_IMPORT_ENERGY_HISTORY,
+                    default=self._config_entry.options.get(
+                        CONF_IMPORT_ENERGY_HISTORY, False
+                    ),
+                ): bool,
+                vol.Required(CONF_DELETE_ENERGY_HISTORY, default=False): bool,
+            }
+        )
+        return self.async_show_form(step_id="energy_history", data_schema=schema)
 
     async def async_step_credentials(
         self, user_input: dict[str, Any] | None = None

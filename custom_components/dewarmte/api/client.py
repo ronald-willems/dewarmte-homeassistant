@@ -133,6 +133,29 @@ class DeWarmteApiClient:
             return None
         return json_data
 
+    async def async_get_insights(
+        self,
+        device: Device,
+        *,
+        timespan: str = "hourly",
+        start_date: str | None = None,
+    ) -> Dict[str, Any]:
+        """Fetch one window of the portal's own energy history.
+
+        The window is chosen by `timespan` and `start_date` snaps to the period
+        containing it; `hourly` returns the buckets of a single day. Unlike
+        `_get_with_retry` this lets failures propagate: the history import must
+        stop and resume later rather than silently leave a hole in the series.
+        """
+        url = f"{self._base_url}/customer/products/{device.device_id}/insights/"
+        params: Dict[str, str] = {"timespan": timespan}
+        if start_date is not None:
+            params["start_date"] = start_date
+        _status, json_data = await self._request_with_retry("GET", url, params=params)
+        if json_data is None:
+            raise DeWarmteApiError(f"Insights response for {url} was not JSON")
+        return json_data
+
     async def async_discover_devices(self) -> list[Device]:
         """Discover all supported devices from the API."""
         try:
