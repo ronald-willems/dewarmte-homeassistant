@@ -16,11 +16,7 @@
   "homekit": {},
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/ronald-willems/dewarmte-homeassistant/issues",
-  "requirements": [
-    "aiohttp>=3.8.0",
-    "requests>=2.31.0",
-    "pyyaml>=6.0.1"
-  ],
+  "requirements": [],
   "ssdp": [],
   "version": "2.3.4",
   "zeroconf": []
