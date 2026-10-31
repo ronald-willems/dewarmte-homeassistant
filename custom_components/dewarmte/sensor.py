@@ -27,6 +27,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.integration.sensor import IntegrationSensor
+from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers.typing import StateType
 
 from . import _LOGGER, DeWarmteDataUpdateCoordinator
@@ -244,6 +245,8 @@ class DeWarmteEnergyIntegrationSensor(IntegrationSensor):
         }
         if "hass" in inspect.signature(IntegrationSensor.__init__).parameters:
             kwargs["hass"] = source_sensor.hass
+        if "device_class" in inspect.signature(IntegrationSensor.__init__).parameters:
+            kwargs["device_class"] = SensorDeviceClass.ENERGY
         super().__init__(**kwargs)
         self._attr_device_info = source_sensor.coordinator.device_info
         self._source_sensor = source_sensor
