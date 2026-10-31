@@ -133,6 +133,13 @@ def hourly_buckets(day: date, buckets: list[dict[str, Any]]) -> Iterator[tuple[d
     So walk the day's real hours and the returned buckets together, matching on
     the label and skipping over hours the API left out. Order settles the
     duplicate: the first "02:00" is the CEST one, the second the CET one.
+
+    The label names the hour the bucket was *closed*, not the one it covers: a
+    bucket "08:00" holds the energy of 07:00-08:00. Checked against this
+    integration's own power-integrating sensor on three days, including a
+    25-hour one: hour H of that sensor matches bucket H+1, every hour. A bucket
+    also only appears once its hour has ended, already complete, so the one
+    labelled with the current hour is safe to import. Hence the shift below.
     """
     expected = _expected_hours(day)
     index = 0
@@ -148,7 +155,7 @@ def hourly_buckets(day: date, buckets: list[dict[str, Any]]) -> Iterator[tuple[d
                 len(buckets),
             )
             return
-        yield expected[index][0], bucket
+        yield expected[index][0] - timedelta(hours=1), bucket
         index += 1
 
 

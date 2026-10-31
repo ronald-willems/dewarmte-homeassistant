@@ -37,19 +37,48 @@ def _buckets(count: int, *, first_hour: int = 0, value: float = 1.0) -> list[dic
 
 
 def test_ordinary_day_maps_to_24_utc_hours() -> None:
-    """A winter day starts at 23:00 UTC the day before (CET is UTC+1)."""
+    """A winter day's "00:00" bucket covers 23:00-00:00 CET, i.e. 22:00 UTC.
+
+    Labels name the hour a bucket was closed, so every bucket lands one hour
+    before its label (CET is UTC+1).
+    """
     mapped = list(hourly_buckets(date(2025, 1, 15), _buckets(24)))
 
     assert len(mapped) == 24
-    assert mapped[0][0] == datetime(2025, 1, 14, 23, tzinfo=timezone.utc)
-    assert mapped[-1][0] == datetime(2025, 1, 15, 22, tzinfo=timezone.utc)
+    assert mapped[0][0] == datetime(2025, 1, 14, 22, tzinfo=timezone.utc)
+    assert mapped[-1][0] == datetime(2025, 1, 15, 21, tzinfo=timezone.utc)
 
 
 def test_summer_day_starts_two_hours_earlier() -> None:
-    """CEST is UTC+2, so local midnight is 22:00 UTC the day before."""
+    """CEST is UTC+2: "00:00" covers 23:00 CEST = 21:00 UTC the day before."""
     mapped = list(hourly_buckets(date(2025, 7, 15), _buckets(24)))
 
-    assert mapped[0][0] == datetime(2025, 7, 14, 22, tzinfo=timezone.utc)
+    assert mapped[0][0] == datetime(2025, 7, 14, 21, tzinfo=timezone.utc)
+
+
+def test_bucket_holds_the_hour_before_its_label() -> None:
+    """Real figures from 2026-10-31 (CET).
+
+    This integration's own power-integrating sensor, per Home Assistant hour,
+    against the API's hourly buckets for the same day:
+
+        hour   sensor kWh   API bucket kWh
+        07:00     1.37      "07:00" 0.00   "08:00" 1.38
+        08:00     1.07      "08:00" 1.38   "09:00" 1.07
+        09:00     0.92      "09:00" 1.07   "10:00" 0.92
+        16:00     0.80      "16:00" 0.01   "17:00" 0.84
+
+    Bucket "08:00" is the 07:00-08:00 hour; the same held on 2026-10-30 and on
+    the 25-hour 2026-10-25. Storing buckets at their label would put every hour
+    of history one hour late.
+    """
+    buckets = _buckets(24, value=0.0)
+    buckets[8]["electricity_consumed"] = 1.38  # label "08:00"
+
+    mapped = {start: b for start, b in hourly_buckets(date(2026, 10, 31), buckets)}
+    seven_cet = datetime(2026, 10, 31, 6, tzinfo=timezone.utc)
+
+    assert mapped[seven_cet]["electricity_consumed"] == 1.38
 
 
 def test_spring_forward_day_has_23_hours() -> None:
@@ -66,7 +95,7 @@ def test_spring_forward_day_has_23_hours() -> None:
     # Consecutive real hours, with no gap where the clock jumped.
     starts = [start for start, _b in mapped]
     assert starts == [starts[0] + timedelta(hours=i) for i in range(23)]
-    assert starts[-1] == datetime(2025, 3, 30, 21, tzinfo=timezone.utc)
+    assert starts[-1] == datetime(2025, 3, 30, 20, tzinfo=timezone.utc)
 
 
 def test_fall_back_day_has_25_hours_and_a_repeated_label() -> None:
@@ -102,10 +131,11 @@ def test_missing_leading_hour_does_not_shift_the_day() -> None:
     mapped = list(hourly_buckets(date(2024, 3, 31), buckets))
 
     assert len(mapped) == 22
-    # 01:00 CET is 00:00 UTC, and that is where the first bucket must land.
-    assert mapped[0][0] == datetime(2024, 3, 31, 0, tzinfo=timezone.utc)
+    # Bucket "01:00" covers 00:00-01:00 CET = 23:00 UTC the day before, and
+    # that is where it must land.
+    assert mapped[0][0] == datetime(2024, 3, 30, 23, tzinfo=timezone.utc)
     assert mapped[0][1]["key"] == "01:00"
-    assert mapped[-1][0] == datetime(2024, 3, 31, 21, tzinfo=timezone.utc)
+    assert mapped[-1][0] == datetime(2024, 3, 31, 20, tzinfo=timezone.utc)
 
 
 def test_hole_in_the_middle_of_a_day_leaves_a_gap() -> None:
@@ -119,8 +149,8 @@ def test_hole_in_the_middle_of_a_day_leaves_a_gap() -> None:
     labels = [b["key"] for _start, b in mapped]
     assert "09:00" in labels and "10:00" not in labels and "14:00" in labels
     by_label = {b["key"]: start for start, b in mapped}
-    # 14:00 CET keeps its own hour rather than sliding into the gap.
-    assert by_label["14:00"] == datetime(2025, 1, 15, 13, tzinfo=timezone.utc)
+    # "14:00" (13:00-14:00 CET) keeps its own hour rather than sliding into the gap.
+    assert by_label["14:00"] == datetime(2025, 1, 15, 12, tzinfo=timezone.utc)
 
 
 def test_unknown_label_is_ignored_rather_than_misplaced() -> None:
@@ -148,7 +178,7 @@ def test_partial_day_maps_only_the_hours_present() -> None:
     mapped = list(hourly_buckets(date(2026, 9, 5), _buckets(19)))
 
     assert len(mapped) == 19
-    assert mapped[0][0] == datetime(2026, 9, 4, 22, tzinfo=timezone.utc)
+    assert mapped[0][0] == datetime(2026, 9, 4, 21, tzinfo=timezone.utc)
 
 
 def test_series_accumulates_a_running_total() -> None:
