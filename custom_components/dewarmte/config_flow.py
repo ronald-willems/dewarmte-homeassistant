@@ -155,12 +155,27 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         kicks off the first, long, catch-up run.
         """
         if user_input is not None:
+            import_on = user_input[CONF_IMPORT_ENERGY_HISTORY]
+            unchanged = import_on == self._config_entry.options.get(
+                CONF_IMPORT_ENERGY_HISTORY, False
+            )
             if user_input.get(CONF_DELETE_ENERGY_HISTORY):
-                for coordinator in self.hass.data[DOMAIN].get(
-                    self._config_entry.entry_id, []
-                ):
-                    if coordinator.device is not None:
-                        async_delete_history(self.hass, coordinator.device)
+                entry_id = self._config_entry.entry_id
+                devices = [
+                    coordinator.device
+                    for coordinator in self.hass.data[DOMAIN].get(entry_id, [])
+                    if coordinator.device is not None
+                ]
+                # An unchanged option fires no update listener, so with the
+                # import left on nothing would rebuild the history until the
+                # next hourly run. Reload once the rows are really gone: the
+                # callback arrives on the recorder thread, hence the hand-off.
+                on_done = None
+                if import_on and unchanged:
+                    on_done = lambda: self.hass.loop.call_soon_threadsafe(  # noqa: E731
+                        self.hass.config_entries.async_schedule_reload, entry_id
+                    )
+                async_delete_history(self.hass, devices, on_done=on_done)
 
             updated_options = {
                 **self._config_entry.options,

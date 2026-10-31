@@ -21,7 +21,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Iterator
+from typing import Any, Callable, Iterable, Iterator
 from zoneinfo import ZoneInfo
 
 from homeassistant.components.recorder import get_instance
@@ -33,6 +33,7 @@ from homeassistant.components.recorder.statistics import (
 from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant
 from homeassistant.util import slugify
+from homeassistant.util.unit_conversion import EnergyConverter
 
 from .api.client import DeWarmteApiClient, DeWarmteApiError
 from .api.models.device import Device
@@ -40,12 +41,21 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-try:  # Cores from 2025.5 want mean_type; the boolean stops working in 2026.11.
+# Metadata keys that only some cores know. The recorder builds its row with
+# `StatisticsMeta(**metadata)`, which rejects any key the running core has no
+# column for, so each is sent only when the core's own TypedDict declares it:
+#   - `mean_type` replaced the `has_mean` boolean in 2025.5; the boolean stops
+#     working in 2026.11.
+#   - `unit_class` is derived from the unit until 2026.11, required after.
+_METADATA_EXTRAS: dict[str, Any] = {}
+if "mean_type" in StatisticMetaData.__annotations__:
     from homeassistant.components.recorder.models import StatisticMeanType
 
-    _MEAN_METADATA: dict[str, Any] = {"mean_type": StatisticMeanType.NONE}
-except ImportError:  # pragma: no cover - older cores only know the boolean
-    _MEAN_METADATA = {"has_mean": False}
+    _METADATA_EXTRAS["mean_type"] = StatisticMeanType.NONE
+else:  # pragma: no cover - older cores only know the boolean
+    _METADATA_EXTRAS["has_mean"] = False
+if "unit_class" in StatisticMetaData.__annotations__:
+    _METADATA_EXTRAS["unit_class"] = EnergyConverter.UNIT_CLASS
 
 # The bucket labels are Dutch wall-clock time, not UTC and not the user's own
 # time zone: DeWarmte is a Dutch company metering pumps installed in NL. Reading
@@ -154,13 +164,17 @@ class _Series:
     total: float
     rows: list[StatisticData] = field(default_factory=list)
 
-    def add(self, start: datetime, value: float) -> None:
-        """Record one hour, carrying the running total forward."""
+    def add(self, start: datetime, value: float) -> bool:
+        """Record one hour, carrying the running total forward.
+
+        Returns False for an hour that is already in the database.
+        """
         if self.next_hour is not None and start < self.next_hour:
-            return
+            return False
         self.total += value
         self.rows.append(StatisticData(start=start, state=value, sum=self.total))
         self.next_hour = start + timedelta(hours=1)
+        return True
 
 
 class EnergyHistoryImporter:
@@ -204,6 +218,10 @@ class EnergyHistoryImporter:
                     err,
                 )
 
+    async def async_catch_up_on_interval(self, _now: datetime) -> None:
+        """`async_track_time_interval` action; the tick time itself is unused."""
+        await self.async_catch_up()
+
     async def _async_run(self) -> None:
         """Walk day by day from the resume point to the current hour."""
         series = await self._async_load_resume_state()
@@ -224,11 +242,15 @@ class EnergyHistoryImporter:
         cutoff = now.replace(minute=0, second=0, microsecond=0)
         last_day = now.astimezone(API_TIME_ZONE).date()
 
-        _LOGGER.info(
+        # The hourly top-up is routine; only a multi-day walk is worth INFO.
+        total_days = (last_day - first_day).days + 1
+        level = logging.INFO if total_days > 1 else logging.DEBUG
+        _LOGGER.log(
+            level,
             "Importing DeWarmte energy history for %s from %s (%d days)",
             self._device.device_id,
             first_day,
-            (last_day - first_day).days + 1,
+            total_days,
         )
 
         day = first_day
@@ -241,9 +263,12 @@ class EnergyHistoryImporter:
             for start, bucket in hourly_buckets(day, payload.get("data") or []):
                 if start >= cutoff:
                     break
-                for entry in series:
+                added = [
                     entry.add(start, float(bucket.get(entry.key) or 0.0))
-                imported += 1
+                    for entry in series
+                ]
+                if any(added):
+                    imported += 1
 
             day += timedelta(days=1)
             days_done += 1
@@ -258,7 +283,8 @@ class EnergyHistoryImporter:
             await asyncio.sleep(REQUEST_DELAY)
 
         self._flush(series)
-        _LOGGER.info(
+        _LOGGER.log(
+            level,
             "Energy history for %s complete: %d hours imported over %d days",
             self._device.device_id,
             imported,
@@ -335,19 +361,25 @@ class EnergyHistoryImporter:
                 source=DOMAIN,
                 statistic_id=entry.statistic_id,
                 unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-                **_MEAN_METADATA,
+                **_METADATA_EXTRAS,
             )
             async_add_external_statistics(self.hass, metadata, entry.rows)
             entry.rows = []
 
 
-def async_delete_history(hass: HomeAssistant, device: Device) -> None:
-    """Drop every imported statistic for a device.
+def async_delete_history(
+    hass: HomeAssistant,
+    devices: Iterable[Device],
+    *,
+    on_done: Callable[[], None] | None = None,
+) -> None:
+    """Drop every imported statistic for the given devices.
 
     Long-term statistics outlive the config entry and are never purged by
     `purge_keep_days`, so without this an experiment with the import would leave
-    rows behind for good.
+    rows behind for good. The recorder does the work on its own thread and calls
+    `on_done` from there once the rows are gone.
     """
-    ids = all_statistic_ids(device)
+    ids = [stat_id for device in devices for stat_id in all_statistic_ids(device)]
     _LOGGER.info("Deleting imported DeWarmte energy history: %s", ", ".join(ids))
-    get_instance(hass).async_clear_statistics(ids)
+    get_instance(hass).async_clear_statistics(ids, on_done=on_done)

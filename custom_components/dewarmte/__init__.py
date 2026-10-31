@@ -124,12 +124,12 @@ def _async_start_energy_history(
             importer.async_catch_up(),
             f"dewarmte energy history {coordinator.device.device_id}",
         )
+        # A plain function here would be classified as an executor job and run
+        # in a worker thread; a coroutine function is scheduled on the loop.
         entry.async_on_unload(
             async_track_time_interval(
                 hass,
-                lambda _now, importer=importer: hass.async_create_task(
-                    importer.async_catch_up()
-                ),
+                importer.async_catch_up_on_interval,
                 ENERGY_HISTORY_INTERVAL,
             )
         )

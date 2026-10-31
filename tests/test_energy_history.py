@@ -183,6 +183,41 @@ def test_series_resumes_without_double_counting() -> None:
     assert [row["sum"] for row in series.rows] == [103.0, 107.0]
 
 
+def test_interval_action_runs_on_the_event_loop() -> None:
+    """The hourly top-up must not be an executor job.
+
+    `async_track_time_interval` wraps its action in a HassJob; a plain function
+    is run in a worker thread, where scheduling the import raises. Seen live as
+    an hourly `RuntimeError: ... calls hass.async_create_task from a thread
+    other than the event loop` -- and no top-up ever running.
+    """
+    from unittest.mock import MagicMock
+
+    from homeassistant.core import HassJob, HassJobType
+
+    from custom_components.dewarmte.energy_history import EnergyHistoryImporter
+
+    importer = EnergyHistoryImporter(MagicMock(), MagicMock(), MagicMock())
+
+    assert HassJob(importer.async_catch_up_on_interval).job_type == HassJobType.Coroutinefunction
+
+
+def test_metadata_extras_only_use_keys_the_core_declares() -> None:
+    """The recorder rejects metadata keys it has no column for.
+
+    Which keys exist depends on the core version (mean_type from 2025.5,
+    unit_class from 2026.11), so the module must send only what this core's
+    TypedDict declares -- and for a kWh series unit_class can only be "energy".
+    """
+    from homeassistant.components.recorder.models import StatisticMetaData
+
+    from custom_components.dewarmte.energy_history import _METADATA_EXTRAS
+
+    assert set(_METADATA_EXTRAS) <= set(StatisticMetaData.__annotations__)
+    if "unit_class" in StatisticMetaData.__annotations__:
+        assert _METADATA_EXTRAS["unit_class"] == "energy"
+
+
 def test_every_series_key_exists_in_a_real_bucket() -> None:
     """Guard against renaming a field without updating the API mapping."""
     bucket = _buckets(1)[0]
