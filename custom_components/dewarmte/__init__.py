@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -20,11 +21,15 @@ from .api.client import DeWarmteApiClient
 from .api.models.config import ConnectionSettings
 from .api.models.device import Device, DwDeviceInfo
 from .api.models.api_sensor import ApiSensor
-from .const import CONF_UPDATE_INTERVAL, DOMAIN, DEFAULT_UPDATE_INTERVAL
+from .const import CONF_IMPORT_ENERGY_HISTORY, CONF_UPDATE_INTERVAL, DOMAIN, DEFAULT_UPDATE_INTERVAL
 from .api.models.status_data import StatusData
+from .energy_history import EnergyHistoryImporter
 from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
+
+# How often to collect the hours that have completed since the last run.
+ENERGY_HISTORY_INTERVAL = timedelta(hours=1)
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -86,6 +91,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.data[DOMAIN][entry.entry_id] = coordinators
 
+        if entry.options.get(CONF_IMPORT_ENERGY_HISTORY, False):
+            _async_start_energy_history(hass, entry, coordinators)
+
         # Register forced-cooling services (idempotent across entries).
         async_setup_services(hass)
 
@@ -95,6 +103,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except Exception as err:
         _LOGGER.error("Error setting up DeWarmte integration: %s", str(err))
         raise ConfigEntryNotReady from err
+
+def _async_start_energy_history(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinators: List["DeWarmteDataUpdateCoordinator"],
+) -> None:
+    """Keep the `dewarmte:` statistics in step with the portal's own history.
+
+    The first catch-up walks years of hourly buckets, so it runs as a background
+    task rather than holding up setup. After that there is nothing to do but
+    collect the hours that have completed since, which is one request each.
+    """
+    for coordinator in coordinators:
+        if coordinator.device is None:
+            continue
+        importer = EnergyHistoryImporter(hass, coordinator.api, coordinator.device)
+        entry.async_create_background_task(
+            hass,
+            importer.async_catch_up(),
+            f"dewarmte energy history {coordinator.device.device_id}",
+        )
+        # A plain function here would be classified as an executor job and run
+        # in a worker thread; a coroutine function is scheduled on the loop.
+        entry.async_on_unload(
+            async_track_time_interval(
+                hass,
+                importer.async_catch_up_on_interval,
+                ENERGY_HISTORY_INTERVAL,
+            )
+        )
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
