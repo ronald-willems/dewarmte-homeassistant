@@ -14,6 +14,7 @@ This repository is a Home Assistant **custom integration** for DeWarmte (`custom
 - CI:
   - `.github/workflows/hassfest.yaml`: runs Home Assistant hassfest validation.
   - `.github/workflows/validate.yaml`: runs HACS action validation.
+  - `.github/workflows/release-check.yaml`: fails when a release tag does not match the `manifest.json` version.
 - Docs/tests:
   - `docs/README.md`
   - `docs/WEBAPP_SCHEMA.md`: what the official web app requires from the settings API (required vs nullable fields, write bodies) — the reference when a user's payload differs from yours.
@@ -154,6 +155,21 @@ Suggested local checks:
 Notes:
 
 - `tests/README.md` describes optional scripts that hit the real DeWarmte service using a local `tests/secrets.yaml`. These are for manual verification only.
+
+## Releasing
+
+Releases are made from `main` with `scripts/release.sh`, never by hand. HACS offers users the GitHub release tag, while Home Assistant shows the `manifest.json` version, so the two must match. The script makes sure they do.
+
+```bash
+scripts/release.sh 2.3.7 --title "Short title" --notes-file /path/to/notes.md [--prerelease] [--draft]
+```
+
+The script refuses to run unless you are on `main`, the tree is clean, `main` is not behind `origin`, the tag is new, the version is higher than the manifest's, and the tests pass. It then bumps `manifest.json`, commits `Release vX.Y.Z`, tags, pushes `main` and the tag, and runs `gh release create`. `release-check.yaml` fails the build if a tag ever disagrees with the manifest.
+
+- **Don't bump the version in feature commits or on branches.** The release commit is the only place the version changes.
+- **Agents: draft the title and notes, then stop for review.** Base them on `git log <last tag>..HEAD` and the linked issues. Check `gh release list` so you don't repeat what an earlier release already shipped. Write the notes in the scratchpad (not the repo) and show them to the maintainer. Run the script only after they approve, passing `--yes`, since the prompt can't be answered from an agent shell.
+- **Style of previous releases:** a short title naming the main change (e.g. "Fixed Energy Sensors"), then a few bullets written for users: what changed for them, any requirement or caveat, and the issue reference (`#24`).
+- Use `--prerelease` when a change needs confirmation from a user with hardware we don't have. HACS only offers pre-releases to users who opt in.
 
 ## How to work effectively in this repo (agent guidance)
 

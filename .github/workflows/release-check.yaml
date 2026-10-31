@@ -1,0 +1,27 @@
+name: Release check
+
+# A release tag must match manifest.json, or HACS offers one version while
+# Home Assistant reports another. Catches releases made outside
+# scripts/release.sh (e.g. in the GitHub UI) that skipped the version bump.
+on:
+  push:
+    tags:
+      - "v*"
+  release:
+    types: [published]
+
+jobs:
+  version:
+    name: Tag matches manifest version
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare tag and manifest version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          manifest="v$(jq -r .version custom_components/dewarmte/manifest.json)"
+          echo "tag=$tag manifest=$manifest"
+          if [ "$tag" != "$manifest" ]; then
+            echo "::error file=custom_components/dewarmte/manifest.json::Tag $tag does not match manifest version $manifest. Bump the manifest (scripts/release.sh does this)."
+            exit 1
+          fi

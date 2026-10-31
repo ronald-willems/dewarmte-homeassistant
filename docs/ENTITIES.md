@@ -64,3 +64,6 @@
 | Cooling Thermostat Type | Whether the thermostat is heating-only or heating and cooling (when cooling is supported). | AO, MP |
 | Cooling Control Mode | Cooling control: thermostat, cooling only, heating only, or forced (when cooling is supported). | AO, MP |
 | Boost Mode | Switch to temporarily enable boost mode for space heating. | AO, MP |
+| Smart Heating Control | Switch to turn smart heating control (dynamic tariffs / solar, via NOX Energy) on or off. Requires the smart heating control terms to be accepted in the DeWarmte app. | PT |
+| Smart Control Minimum Temperature | Lowest warm water setpoint smart heating control may use (40–70 ℃). Only used while smart heating control is on. | PT |
+| Smart Control Maximum Temperature | Highest warm water setpoint smart heating control may use (40–70 ℃). Only used while smart heating control is on. | PT |

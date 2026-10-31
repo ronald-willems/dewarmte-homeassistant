@@ -32,6 +32,12 @@ SWITCH_DESCRIPTIONS = {
         icon="mdi:rocket-launch",
         device_types=("AO", "MP"),  # AO/MP-specific: boost mode for space heating
     ),
+    "is_control_enabled": DeWarmteSwitchEntityDescription(
+        key="is_control_enabled",
+        name="Smart Heating Control",
+        icon="mdi:home-lightning-bolt",
+        device_types=("PT",),  # PT-specific: smart heating control (needs its terms accepted in the app)
+    ),
 }
 
 async def async_setup_entry(
