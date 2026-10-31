@@ -27,7 +27,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.integration.sensor import IntegrationSensor
-from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers.typing import StateType
 
 from . import _LOGGER, DeWarmteDataUpdateCoordinator
