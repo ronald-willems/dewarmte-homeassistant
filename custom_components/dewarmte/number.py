@@ -45,6 +45,11 @@ class DeWarmteNumberEntityDescription(NumberEntityDescription):
 MIN_WARM_WATER_TEMP = 40.0
 MAX_WARM_WATER_TEMP = 70.0
 
+# Smart heating control range: the web app's own slider bounds (the PATCH
+# endpoint exposes no OPTIONS metadata).
+MIN_SMART_CONTROL_TEMP = 40.0
+MAX_SMART_CONTROL_TEMP = 70.0
+
 # All number entity descriptions
 NUMBER_DESCRIPTIONS = {
     "heat_curve_s1_outside_temp": DeWarmteNumberEntityDescription(
@@ -128,6 +133,24 @@ NUMBER_DESCRIPTIONS = {
         native_max_value=MAX_WARM_WATER_TEMP,
         native_step=5.0,
         device_types=("PT",),  # PT-specific: warm water temperature settings for heat pumps
+    ),
+    "pompt_min_temp": DeWarmteNumberEntityDescription(
+        key="pompt_min_temp",
+        name="Smart Control Minimum Temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=MIN_SMART_CONTROL_TEMP,
+        native_max_value=MAX_SMART_CONTROL_TEMP,
+        native_step=1.0,
+        device_types=("PT",),  # PT-specific: smart heating control range
+    ),
+    "pompt_max_temp": DeWarmteNumberEntityDescription(
+        key="pompt_max_temp",
+        name="Smart Control Maximum Temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=MIN_SMART_CONTROL_TEMP,
+        native_max_value=MAX_SMART_CONTROL_TEMP,
+        native_step=1.0,
+        device_types=("PT",),  # PT-specific: smart heating control range
     ),
 }
 

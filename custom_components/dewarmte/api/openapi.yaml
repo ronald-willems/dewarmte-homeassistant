@@ -78,6 +78,48 @@ components:
         updated_at:
           type: string
           format: date-time
+        smart_control_tc_accepted:
+          type: boolean
+          description: |
+            Whether the account accepted the smart heating control terms. Until
+            it has, the web app shows only the terms page for smart control.
+
+    SmartControl:
+      type: object
+      description: |
+        Pomp T smart heating control (run with NOX Energy). The web app offers
+        it only on the Pomp T and reads/writes it for that product. The API
+        answers for AO/HC products too, but with unused defaults.
+      properties:
+        is_control_enabled:
+          type: boolean
+        pompt_min_temp:
+          type: integer
+          description: Lowest setpoint smart control may use. The web app slider allows 40-70.
+        pompt_max_temp:
+          type: integer
+          description: Highest setpoint smart control may use. The web app slider allows 40-70.
+        is_frank_energie_connected:
+          type: boolean
+        use_dynamic_tariff:
+          type: boolean
+        use_solar_optimization:
+          type: boolean
+        use_flexibility_trading:
+          type: boolean
+          description: Requires is_frank_energie_connected.
+        is_training_mode:
+          type: boolean
+          readOnly: true
+      required:
+        - is_control_enabled
+        - pompt_min_temp
+        - pompt_max_temp
+        - is_frank_energie_connected
+        - use_dynamic_tariff
+        - use_solar_optimization
+        - use_flexibility_trading
+        - is_training_mode
 
     DeviceInfo:
       type: object
@@ -739,3 +781,49 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound' 
+  /customer/products/{deviceId}/smart-control/:
+    parameters:
+      - $ref: '#/components/parameters/deviceId'
+    get:
+      summary: Get smart heating control state
+      operationId: getSmartControl
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Smart control state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmartControl'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update smart heating control
+      description: |
+        The web app sends every writable field (all of SmartControl except
+        is_training_mode). OPTIONS returns no field metadata for this endpoint.
+      operationId: updateSmartControl
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmartControl'
+      responses:
+        '200':
+          description: Smart control updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmartControl'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'

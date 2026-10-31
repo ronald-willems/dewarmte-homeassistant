@@ -8,6 +8,9 @@ class SettingsGroup:
     """Represents a group of related settings that are updated together."""
     endpoint: str
     keys: List[str]
+    # Defaults to settings/{endpoint}/; set for groups that live elsewhere.
+    path: Optional[str] = None
+    method: str = "POST"
 
 @dataclass
 class WarmWaterRange:
@@ -51,6 +54,16 @@ class DeviceOperationSettings:
     warm_water_ranges: List[WarmWaterRange]
     version: int
     is_applied: bool
+
+    # Pomp T smart heating control, from the separate smart-control/ endpoint.
+    # Only fetched for PT devices, so None for all others.
+    is_control_enabled: Optional[bool] = None
+    pompt_min_temp: Optional[int] = None
+    pompt_max_temp: Optional[int] = None
+    is_frank_energie_connected: Optional[bool] = None
+    use_dynamic_tariff: Optional[bool] = None
+    use_solar_optimization: Optional[bool] = None
+    use_flexibility_trading: Optional[bool] = None
 
     @classmethod
     def from_api_response(cls, data: Dict[str, Any]) -> "DeviceOperationSettings":
@@ -98,7 +111,8 @@ class DeviceOperationSettings:
                 for range_data in data.get("warm_water_ranges", [])
             ],
             version=int(data["version"]),
-            is_applied=bool(data["is_applied"])
+            is_applied=bool(data["is_applied"]),
+            **{key: data.get(key) for key in SETTING_GROUPS["smart_control"].keys},
         )
 
 # Define all settings groups
@@ -134,5 +148,15 @@ SETTING_GROUPS = {
     "warm_water": SettingsGroup(
         endpoint="warm-water",
         keys=["warm_water_is_scheduled", "warm_water_target_temperature"],
+    ),
+    # Not under settings/ and written with PATCH. The web app sends exactly
+    # these keys (the read-only is_training_mode is left out).
+    "smart_control": SettingsGroup(
+        endpoint="smart-control",
+        path="smart-control/",
+        method="PATCH",
+        keys=["is_control_enabled", "pompt_min_temp", "pompt_max_temp",
+              "is_frank_energie_connected", "use_dynamic_tariff",
+              "use_solar_optimization", "use_flexibility_trading"],
     ),
 } 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import Any, Dict, Union, Callable, List
 
 import aiohttp
@@ -229,6 +230,15 @@ class DeWarmteApiClient:
             data = response
             _LOGGER.debug("Operation settings data: %s", data)
 
+            # Smart heating control has its own endpoint and only applies to the
+            # Pomp T (the web app offers it nowhere else).
+            if device.device_type == "PT":
+                smart_control_url = f"{self._base_url}/customer/products/{device.device_id}/smart-control/"
+                _LOGGER.debug("Making GET request to %s", smart_control_url)
+                smart_control = await self._get_with_retry(smart_control_url)
+                _LOGGER.debug("Smart control data: %s", smart_control)
+                data = {**data, **(smart_control or {})}
+
             settings = DeviceOperationSettings.from_api_response(data)
             return settings
                 
@@ -259,7 +269,8 @@ class DeWarmteApiClient:
 
     async def _update_settings(self, device: Device, group: SettingsGroup, key: str, value: Any) -> DeviceOperationSettings | None:
         """Common logic for updating settings for a specific device."""
-        url = f"{self._base_url}/customer/products/{device.device_id}/settings/{group.endpoint}/"
+        path = group.path or f"settings/{group.endpoint}/"
+        url = f"{self._base_url}/customer/products/{device.device_id}/{path}"
         
         # Get current settings
         current_settings = await self.async_get_operation_settings(device)
@@ -328,9 +339,9 @@ class DeWarmteApiClient:
             del update_settings["warm_water_target_temperature"]
         
         
-        _LOGGER.debug("Making POST request to %s with data: %s", url, update_settings)
+        _LOGGER.debug("Making %s request to %s with data: %s", group.method, url, update_settings)
         try:
-            _status, response_data = await self._request_with_retry("POST", url, json=update_settings)
+            _status, response_data = await self._request_with_retry(group.method, url, json=update_settings)
         except DeWarmteApiError as err:
             _LOGGER.error("Error updating %s settings: %s", group.endpoint, err)
             raise DeWarmteApiError(f"Failed to update {group.endpoint} settings: {err}") from err
@@ -340,8 +351,11 @@ class DeWarmteApiClient:
         _LOGGER.debug("%s settings update response: %s", group.endpoint, response_data)
 
         # A write is answered with the complete new settings object, so callers
-        # can show the new state without polling for it.
+        # can show the new state without polling for it. Smart control is the
+        # exception: it answers with only its own fields, so merge those in.
         try:
+            if group.endpoint == "smart-control":
+                return replace(current_settings, **{k: response_data[k] for k in group.keys})
             return DeviceOperationSettings.from_api_response(response_data)
         except Exception as err:
             # The write itself succeeded - only the echo was unusable - so this
