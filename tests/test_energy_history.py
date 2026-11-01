@@ -14,12 +14,11 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from custom_components.dewarmte.energy_history import (
-    SERIES,
-    _expected_hours,
-    _Series,
+from custom_components.dewarmte.energy_history.portal import (
     hourly_buckets,
+    wall_clock_hours,
 )
+from custom_components.dewarmte.energy_history.store import SERIES, _Series
 
 
 def _buckets(count: int, *, first_hour: int = 0, value: float = 1.0) -> list[dict]:
@@ -165,10 +164,10 @@ def test_unknown_label_is_ignored_rather_than_misplaced() -> None:
 
 def test_expected_hours_match_the_real_dst_day_lengths() -> None:
     """23, 24 and 25 hours, with the autumn day carrying "02:00" twice."""
-    assert len(_expected_hours(date(2025, 3, 30))) == 23
-    assert len(_expected_hours(date(2025, 1, 15))) == 24
+    assert len(wall_clock_hours(date(2025, 3, 30))) == 23
+    assert len(wall_clock_hours(date(2025, 1, 15))) == 24
 
-    autumn = _expected_hours(date(2024, 10, 27))
+    autumn = wall_clock_hours(date(2024, 10, 27))
     assert len(autumn) == 25
     assert [label for _start, label in autumn].count("02:00") == 2
 
@@ -183,34 +182,36 @@ def test_partial_day_maps_only_the_hours_present() -> None:
 
 def test_series_accumulates_a_running_total() -> None:
     """External statistics carry a cumulative sum, not just the hour's value."""
-    series = _Series(
-        key="heat_supplied", name="Heat", statistic_id="dewarmte:x_heat", next_hour=None, total=0.0
-    )
+    series = _Series(key="heat_supplied", name="Heat", statistic_id="dewarmte:x_heat", total=0.0)
     start = datetime(2025, 1, 15, 0, tzinfo=timezone.utc)
     for i, value in enumerate([1.5, 2.0, 0.5]):
-        series.add(start + timedelta(hours=i), value)
+        series.record(start + timedelta(hours=i), value)
 
     assert [row["state"] for row in series.rows] == [1.5, 2.0, 0.5]
     assert [row["sum"] for row in series.rows] == [1.5, 3.5, 4.0]
 
 
-def test_series_resumes_without_double_counting() -> None:
-    """Hours already in the database are skipped, and the total continues."""
+def test_store_resumes_without_double_counting() -> None:
+    """Hours already in the database are skipped, and the totals continue."""
+    from unittest.mock import MagicMock
+
+    from custom_components.dewarmte.energy_history.portal import EnergyHour
+    from custom_components.dewarmte.energy_history.store import ImportedStatistics
+
     start = datetime(2025, 1, 15, 0, tzinfo=timezone.utc)
-    series = _Series(
-        key="heat_supplied",
-        name="Heat",
-        statistic_id="dewarmte:x_heat",
-        next_hour=start + timedelta(hours=2),
-        total=100.0,
-    )
+    heat = _Series(key="heat_supplied", name="Heat", statistic_id="dewarmte:x_heat", total=100.0)
+    power = _Series(key="electricity_consumed", name="Power", statistic_id="dewarmte:x_el", total=30.0)
+    stored = ImportedStatistics(MagicMock(), MagicMock(), [heat, power], next_hour=start + timedelta(hours=2))
 
     for i, value in enumerate([1.0, 1.0, 3.0, 4.0]):
-        series.add(start + timedelta(hours=i), value)
+        hour = EnergyHour(start + timedelta(hours=i), heat_supplied=value, electricity_consumed=value / 10, electric_backup_usage=0.0)
+        stored.add(hour)
 
     # The first two hours were already imported; only the last two are new.
-    assert [row["state"] for row in series.rows] == [3.0, 4.0]
-    assert [row["sum"] for row in series.rows] == [103.0, 107.0]
+    assert stored.hours_added == 2
+    assert [row["sum"] for row in heat.rows] == [103.0, 107.0]
+    assert [row["sum"] for row in power.rows] == [30.3, 30.7]
+    assert stored.next_hour == start + timedelta(hours=4)
 
 
 def test_interval_action_runs_on_the_event_loop() -> None:
@@ -225,7 +226,7 @@ def test_interval_action_runs_on_the_event_loop() -> None:
 
     from homeassistant.core import HassJob, HassJobType
 
-    from custom_components.dewarmte.energy_history import EnergyHistoryImporter
+    from custom_components.dewarmte.energy_history.importer import EnergyHistoryImporter
 
     importer = EnergyHistoryImporter(MagicMock(), MagicMock(), MagicMock())
 
@@ -249,10 +250,10 @@ async def test_discovery_never_starts_after_the_first_day_with_data(
     """Hourly history can begin on any day between two monthly probes."""
     from unittest.mock import MagicMock
 
-    from custom_components.dewarmte import energy_history
-    from custom_components.dewarmte.energy_history import EnergyHistoryImporter
+    from custom_components.dewarmte.energy_history import portal
+    from custom_components.dewarmte.energy_history.portal import PortalHistory
 
-    monkeypatch.setattr(energy_history, "REQUEST_DELAY", 0)
+    monkeypatch.setattr(portal, "REQUEST_DELAY", 0)
 
     class FakeApi:
         async def async_get_insights(self, _device, *, timespan, start_date=None):
@@ -261,9 +262,7 @@ async def test_discovery_never_starts_after_the_first_day_with_data(
             has_data = date.fromisoformat(start_date) >= first_data
             return {"data": _buckets(24) if has_data else []}
 
-    importer = EnergyHistoryImporter(MagicMock(), FakeApi(), MagicMock())
-
-    start = await importer._async_discover_first_day()
+    start = await PortalHistory(FakeApi(), MagicMock()).find_first_day()
 
     assert start == expected_start
     assert start <= first_data
@@ -278,7 +277,7 @@ def test_metadata_extras_only_use_keys_the_core_declares() -> None:
     """
     from homeassistant.components.recorder.models import StatisticMetaData
 
-    from custom_components.dewarmte.energy_history import _METADATA_EXTRAS
+    from custom_components.dewarmte.energy_history.store import _METADATA_EXTRAS
 
     assert set(_METADATA_EXTRAS) <= set(StatisticMetaData.__annotations__)
     if "unit_class" in StatisticMetaData.__annotations__:
@@ -306,7 +305,7 @@ def test_statistic_ids_are_valid_for_home_assistant(device_id: str, expected: st
     from homeassistant.components.recorder.statistics import valid_statistic_id
 
     from custom_components.dewarmte.api.models.device import Device
-    from custom_components.dewarmte.energy_history import all_statistic_ids, statistic_id
+    from custom_components.dewarmte.energy_history.store import all_statistic_ids, statistic_id
 
     device = Device(
         device_id=device_id, product_id="AO A-534", access_token="t", device_type="AO"

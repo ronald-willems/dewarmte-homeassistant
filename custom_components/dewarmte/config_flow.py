@@ -166,16 +166,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     for coordinator in self.hass.data[DOMAIN].get(entry_id, [])
                     if coordinator.device is not None
                 ]
+                await async_delete_history(self.hass, devices)
                 # An unchanged option fires no update listener, so with the
                 # import left on nothing would rebuild the history until the
-                # next hourly run. Reload once the rows are really gone: the
-                # callback arrives on the recorder thread, hence the hand-off.
-                on_done = None
+                # next hourly run.
                 if import_on and unchanged:
-                    on_done = lambda: self.hass.loop.call_soon_threadsafe(  # noqa: E731
-                        self.hass.config_entries.async_schedule_reload, entry_id
-                    )
-                async_delete_history(self.hass, devices, on_done=on_done)
+                    self.hass.config_entries.async_schedule_reload(entry_id)
 
             updated_options = {
                 **self._config_entry.options,
