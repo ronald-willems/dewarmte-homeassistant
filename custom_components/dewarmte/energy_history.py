@@ -304,10 +304,15 @@ class EnergyHistoryImporter:
         `yearly` says which years hold data, but hourly buckets do not go back
         as far as the aggregates do -- an account can report a full year of
         energy and return nothing at all for every day of it. So probe forward a
-        month at a time for the first one that actually answers, then start at
-        the beginning of that month. The 15th is the probe date because isolated
-        days are missing here and there and the 1st is as likely as any to be
-        one of them.
+        month at a time for the first one that actually answers. The 15th is the
+        probe date because isolated days are missing here and there and the 1st
+        is as likely as any to be one of them.
+
+        History can begin anywhere between the last empty probe and the one that
+        answered, so start the day after the empty one. Starting at the 1st of
+        the answering month dropped the second half of the month before: a pump
+        installed on 19 May lost 19-31 May. The empty days walked instead cost
+        one request each and add nothing.
         """
         yearly = await self._api.async_get_insights(self._device, timespan="yearly")
         years = sorted(
@@ -317,13 +322,15 @@ class EnergyHistoryImporter:
             return None
 
         today = datetime.now(timezone.utc).astimezone(API_TIME_ZONE).date()
+        first_candidate = date(years[0], 1, 1)
         probe = date(years[0], 1, 15)
         while probe <= today:
             payload = await self._api.async_get_insights(
                 self._device, timespan="hourly", start_date=probe.isoformat()
             )
             if payload.get("data"):
-                return probe.replace(day=1)
+                return first_candidate
+            first_candidate = probe + timedelta(days=1)
             probe = (probe.replace(day=28) + timedelta(days=7)).replace(day=15)
             await asyncio.sleep(REQUEST_DELAY)
         return None
