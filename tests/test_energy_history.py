@@ -232,6 +232,43 @@ def test_interval_action_runs_on_the_event_loop() -> None:
     assert HassJob(importer.async_catch_up_on_interval).job_type == HassJobType.Coroutinefunction
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("first_data", "expected_start"),
+    [
+        # Reported in #23: installed mid-May, the 15 May probe is empty and the
+        # import used to start on 1 June, losing 19-31 May.
+        (date(2025, 5, 19), date(2025, 5, 16)),
+        (date(2025, 5, 3), date(2025, 4, 16)),
+        (date(2025, 1, 2), date(2025, 1, 1)),
+    ],
+)
+async def test_discovery_never_starts_after_the_first_day_with_data(
+    monkeypatch: pytest.MonkeyPatch, first_data: date, expected_start: date
+) -> None:
+    """Hourly history can begin on any day between two monthly probes."""
+    from unittest.mock import MagicMock
+
+    from custom_components.dewarmte import energy_history
+    from custom_components.dewarmte.energy_history import EnergyHistoryImporter
+
+    monkeypatch.setattr(energy_history, "REQUEST_DELAY", 0)
+
+    class FakeApi:
+        async def async_get_insights(self, _device, *, timespan, start_date=None):
+            if timespan == "yearly":
+                return {"data": [{"key": str(first_data.year)}]}
+            has_data = date.fromisoformat(start_date) >= first_data
+            return {"data": _buckets(24) if has_data else []}
+
+    importer = EnergyHistoryImporter(MagicMock(), FakeApi(), MagicMock())
+
+    start = await importer._async_discover_first_day()
+
+    assert start == expected_start
+    assert start <= first_data
+
+
 def test_metadata_extras_only_use_keys_the_core_declares() -> None:
     """The recorder rejects metadata keys it has no column for.
 
