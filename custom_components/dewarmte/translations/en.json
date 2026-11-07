@@ -170,6 +170,14 @@
                     "stand_by": "Standby",
                     "unknown": "Unknown"
                 }
+            },
+            "settings_state": {
+                "name": "Settings State",
+                "state": {
+                    "applied": "Applied",
+                    "sent": "Sent",
+                    "restored": "Restored"
+                }
             }
         }
     }

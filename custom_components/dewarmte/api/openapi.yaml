@@ -437,11 +437,16 @@ components:
           type: integer
         state:
           type: string
+          enum: [applied, sent, restored]
           description: >-
-            Rollout state of this settings version (e.g. `applied`). The web app
-            reads this; the integration reads the boolean `is_applied` instead.
+            Rollout state of this settings version. A write is answered with
+            `sent`; the pump then picks it up (`applied`) or the backend reverts
+            to the previous version (`restored`). The web app polls settings
+            every 3 s while `sent` and reads only this field, not `is_applied`.
+            Exposed as the "Settings State" diagnostic sensor (issue #30).
         is_applied:
           type: boolean
+          description: Not read by the web app or the integration; `state` is authoritative.
       required:
         # Mirrors the official web app's model: it throws on any of these being
         # absent or null. Notably `thermostat_type` and the rest of the cooling

@@ -53,7 +53,7 @@ NEW_SETTINGS: Dict[str, Any] = {
     "warm_water_is_scheduled": False,
     "warm_water_ranges": [{"order": 0, "temperature": 50, "period": "00:00-23:59"}],
     "version": 229,
-    "is_applied": True,
+    "state": "applied",
 }
 
 

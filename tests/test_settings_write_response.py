@@ -18,7 +18,7 @@ from test_cooling_settings import NEW_SETTINGS, FakeResponse, _make_client
 
 def _response(**overrides: Any) -> Dict[str, Any]:
     """A settings write response, as the API sends it (values already applied)."""
-    return {**NEW_SETTINGS, "state": "sent", "is_applied": False, **overrides}
+    return {**NEW_SETTINGS, "state": "sent", **overrides}
 
 
 @pytest.mark.asyncio

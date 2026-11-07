@@ -72,7 +72,7 @@ The casts throw on a missing or null value:
 | `legionella_protection_day` | **nullable** num | optional key, null ok |
 | `legionella_protection_time` | **nullable** String | optional key, null ok |
 | `version` | required num | required key |
-| `state` | required enum | not read (we read `is_applied` instead) |
+| `state` | required enum | required key |
 
 **Our nullability matches theirs exactly.** The five fields the official client
 allows to be null are the same five the integration treats as optional. We are
@@ -145,6 +145,29 @@ English labels:
 The app decodes any other value as `unknown` rather than failing. Our Operating
 State sensor reports such a value as unknown and logs a warning naming it, so the
 list can be extended.
+
+### Settings `state` (issue #30)
+
+The settings model decodes a required `state` enum with the values `applied`,
+`sent` and `restored`. The bundle has no reference to the boolean `is_applied`
+that the API also returns, so `state` is the field the official client relies
+on, and `is_applied` could disappear without breaking the web app. The app's
+behaviour around it (bundle of 2026-11-07):
+
+- Every settings write is answered with `state: sent`. The app then shows
+  "Saving your changes... This may take a moment." and polls the settings
+  endpoint every 3 seconds while the state is still `sent`. It shows the same
+  banner on page load when the state is `sent`, so a write from the
+  integration is visible there as pending.
+- On `applied` it shows "Your changes are saved!".
+- On `restored` it reverts the field in the UI and shows "There was a problem
+  saving your changes. Please try again later." The backend went back to the
+  previous settings version.
+
+The integration publishes the write's echo (`sent`) and sees the outcome on its
+next regular poll. The diagnostic "Settings State" sensor exposes the value
+(with `version` as an attribute), and the coordinator logs a warning when a
+poll turns `sent` into `restored`, so a value that "did not stick" has a trace.
 
 ## Why this matters (issue #20)
 

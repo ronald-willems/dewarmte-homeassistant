@@ -61,7 +61,7 @@ async def main() -> int:
             for field in (
                 "cooling_thermostat_type", "cooling_control_mode", "cooling_temperature",
                 "cooling_schedules", "is_force_cooling_active",
-                "force_cooling_temperature", "force_cooling_end", "version",
+                "force_cooling_temperature", "force_cooling_end", "version", "state",
             ):
                 print(f"  {field} = {getattr(settings, field, '<missing>')}")
     return 0

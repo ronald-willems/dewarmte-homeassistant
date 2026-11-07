@@ -53,7 +53,11 @@ class DeviceOperationSettings:
     warm_water_target_temperature: float
     warm_water_ranges: List[WarmWaterRange]
     version: int
-    is_applied: bool
+    # Rollout state of this settings version: "sent" until the pump has picked
+    # it up, then "applied", or "restored" when the backend reverted to the
+    # previous version. The web app decodes only this enum (its model does not
+    # read the boolean `is_applied`), so this is the authoritative field.
+    state: str
 
     # Pomp T smart heating control, from the separate smart-control/ endpoint.
     # Only fetched for PT devices, so None for all others.
@@ -117,7 +121,7 @@ class DeviceOperationSettings:
                 for range_data in data.get("warm_water_ranges", [])
             ],
             version=int(data["version"]),
-            is_applied=bool(data["is_applied"]),
+            state=data["state"],
             legionella_protection_day=(
                 int(data["legionella_protection_day"])
                 if data.get("legionella_protection_day") is not None

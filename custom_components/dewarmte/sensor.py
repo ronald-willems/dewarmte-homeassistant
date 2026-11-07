@@ -17,6 +17,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
+    EntityCategory,
     UnitOfEnergy,
     UnitOfPower,
     UnitOfTemperature,
@@ -53,6 +54,11 @@ class DeWarmteSensorEntityDescription(SensorEntityDescription):
     # "settings" -> coordinator._cached_settings (operation settings).
     source: str = "status"
     requires_cooling: bool = False  # Only create for cooling-capable devices
+    # Attribute name on the source object; defaults to `key`. Set when the
+    # entity key must differ from the field (e.g. two sources share a name).
+    field: str | None = None
+    # Other fields of the same source object to expose as state attributes.
+    attribute_keys: tuple[str, ...] = ()
 
 # Values of status.state, as decoded by the official web app (mydewarmte.com).
 # The app maps any other value to "unknown"; see docs/WEBAPP_SCHEMA.md.
@@ -65,6 +71,16 @@ STATE_OPTIONS: list[str] = [
     "pompt_help",
     "stand_by",
     "unknown",
+]
+
+# Values of settings.state, as decoded by the official web app. After a write
+# the app polls settings every 3 s while the state is "sent", then shows
+# "Your changes are saved!" on "applied" or "There was a problem saving your
+# changes" on "restored" (the backend reverted to the previous version).
+SETTINGS_STATE_OPTIONS: list[str] = [
+    "applied",
+    "sent",
+    "restored",
 ]
 
 SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
@@ -195,6 +211,21 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         source="settings",
         requires_cooling=True,
     ),
+    # Whether the pump has picked up the latest settings version (issue #30).
+    # A write returns "sent"; the next polls show "applied" or "restored".
+    DeWarmteSensorEntityDescription(
+        key="settings_state",
+        field="state",
+        name="Settings State",
+        translation_key="settings_state",
+        device_class=SensorDeviceClass.ENUM,
+        options=SETTINGS_STATE_OPTIONS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:cloud-sync-outline",
+        device_types=("AO", "MP", "PT"),  # Only these product types have settings
+        source="settings",
+        attribute_keys=("version",),
+    ),
 )
 
 @final
@@ -230,7 +261,7 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
             source_obj = self.coordinator.data
         if not source_obj:
             return None
-        value = getattr(source_obj, description.key, None)
+        value = getattr(source_obj, description.field or description.key, None)
         if value is None:
             return None
         if description.options is not None and value not in description.options:
@@ -243,10 +274,24 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
                     "%s: DeWarmte sent unknown %s value %r (expected one of %s); "
                     "please report it at "
                     "https://github.com/ronald-willems/dewarmte-homeassistant/issues",
-                    self.entity_id, description.key, value, ", ".join(description.options),
+                    self.entity_id, description.field or description.key, value, ", ".join(description.options),
                 )
             return None
         return cast(StateType, value)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:  # type: ignore[override]
+        """Expose the description's attribute_keys from the same source object."""
+        description = self.dewarmte_description
+        if not description.attribute_keys:
+            return None
+        if description.source == "settings":
+            source_obj = getattr(self.coordinator, "_cached_settings", None)
+        else:
+            source_obj = self.coordinator.data
+        if not source_obj:
+            return None
+        return {key: getattr(source_obj, key, None) for key in description.attribute_keys}
 
 @final
 class DeWarmteEnergyIntegrationSensor(IntegrationSensor):

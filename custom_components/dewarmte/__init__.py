@@ -20,6 +20,7 @@ from homeassistant.helpers.update_coordinator import (
 from .api.client import DeWarmteApiClient
 from .api.models.config import ConnectionSettings
 from .api.models.device import Device, DwDeviceInfo
+from .api.models.settings import DeviceOperationSettings
 from .api.models.api_sensor import ApiSensor
 from .const import CONF_IMPORT_ENERGY_HISTORY, CONF_UPDATE_INTERVAL, DOMAIN, DEFAULT_UPDATE_INTERVAL
 from .api.models.status_data import StatusData
@@ -30,6 +31,29 @@ _LOGGER = logging.getLogger(__name__)
 
 # How often to collect the hours that have completed since the last run.
 ENERGY_HISTORY_INTERVAL = timedelta(hours=1)
+
+
+def _warn_if_settings_restored(
+    device_id: str,
+    previous: DeviceOperationSettings | None,
+    current: DeviceOperationSettings | None,
+) -> None:
+    """Log when the backend reverted settings that were still being sent.
+
+    A settings write is answered with state "sent". The web app then polls
+    until the state is "applied" (shows "Your changes are saved!") or
+    "restored" (shows "There was a problem saving your changes"). We only see
+    the outcome on the next regular poll, so make the failure visible here;
+    otherwise the entities silently flip back to the old values (issue #30).
+    """
+    if previous is None or current is None:
+        return
+    if previous.state == "sent" and current.state == "restored":
+        _LOGGER.warning(
+            "Device %s: DeWarmte restored the previous settings (version %s); "
+            "the last change was not applied by the pump",
+            device_id, current.version,
+        )
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -166,6 +190,8 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
         )
         self.api = api
         self._device = device
+        # Operation settings from the last poll or write; None for HC devices.
+        self._cached_settings: DeviceOperationSettings | None = None
         # Set only while the energy history import is switched on.
         self.energy_history: EnergyHistoryImporter | None = None
 
@@ -191,7 +217,9 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
             # Get operation settings (needed for number, select, and switch entities)
             # Fetch settings for AO, MP, and PT devices (HC devices have no settings)
             if self.device.product_id.startswith(("AO ", "MP ", "PT ")):
-                self._cached_settings = await self.api.async_get_operation_settings(self.device)
+                settings = await self.api.async_get_operation_settings(self.device)
+                _warn_if_settings_restored(self.device.device_id, self._cached_settings, settings)
+                self._cached_settings = settings
             else:
                 self._cached_settings = None
 
