@@ -54,6 +54,19 @@ class DeWarmteSensorEntityDescription(SensorEntityDescription):
     source: str = "status"
     requires_cooling: bool = False  # Only create for cooling-capable devices
 
+# Values of status.state, as decoded by the official web app (mydewarmte.com).
+# The app maps any other value to "unknown"; see docs/WEBAPP_SCHEMA.md.
+STATE_OPTIONS: list[str] = [
+    "off",
+    "heating",
+    "cooling",
+    "defrosting",
+    "disinfecting",
+    "pompt_help",
+    "stand_by",
+    "unknown",
+]
+
 SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
     # Status sensors
     DeWarmteSensorEntityDescription(
@@ -137,6 +150,15 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         native_unit_of_measurement=None,
         device_types=("AO", "PT", "HC", "MP"),  # Common: fault codes for all devices
     ),
+    DeWarmteSensorEntityDescription(
+        key="state",
+        name="Operating State",
+        translation_key="state",
+        device_class=SensorDeviceClass.ENUM,
+        options=STATE_OPTIONS,
+        icon="mdi:heat-pump-outline",
+        device_types=("AO", "MP", "PT"),  # HC's status model has no state field
+    ),
     # PT device specific sensors (DHW heat pump)
     DeWarmteSensorEntityDescription(
         key="top_boiler_temp",
@@ -191,6 +213,7 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.device.device_id}_{description.key}"
         self._attr_device_info = coordinator.device_info
+        self._reported_unknown_options: set[Any] = set()
 
     @property
     def dewarmte_description(self) -> DeWarmteSensorEntityDescription:
@@ -209,6 +232,19 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
             return None
         value = getattr(source_obj, description.key, None)
         if value is None:
+            return None
+        if description.options is not None and value not in description.options:
+            # HA raises on an ENUM value outside `options`, and that exception
+            # aborts the coordinator's listener loop, freezing this device's
+            # other entities. Report the new value loudly instead.
+            if value not in self._reported_unknown_options:
+                self._reported_unknown_options.add(value)
+                _LOGGER.warning(
+                    "%s: DeWarmte sent unknown %s value %r (expected one of %s); "
+                    "please report it at "
+                    "https://github.com/ronald-willems/dewarmte-homeassistant/issues",
+                    self.entity_id, description.key, value, ", ".join(description.options),
+                )
             return None
         return cast(StateType, value)
 

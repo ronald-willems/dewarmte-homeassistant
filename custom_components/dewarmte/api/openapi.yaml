@@ -199,6 +199,14 @@ components:
           type: number
           format: float
           description: Electric backup usage in kW
+        state:
+          type: string
+          nullable: true
+          enum: ["off", heating, cooling, defrosting, disinfecting, pompt_help, stand_by, unknown]
+          description: >-
+            Operating state. Sent for AO, MP and PT; HC's status has no such field.
+            The web app labels `pompt_help` "Tap water heat assist" and maps any
+            other value to `unknown`. Exposed as the Operating State sensor.
 
     Product:
       type: object

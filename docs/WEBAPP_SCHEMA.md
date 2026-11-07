@@ -113,6 +113,28 @@ are nullable). Each product `type` gets its own status parser, but they all shar
 the one settings model above. We already read this flag into
 `Device.supports_cooling`; nothing consumes it yet.
 
+### Status `state` (issue #28)
+
+The products parser picks a status model by `type`. In the bundle extracted
+2026-11-07, the models for AO, MP and PT decode a nullable `state` enum, and HC's
+model (only `is_on` and the boiler temperatures) does not. Values and the app's
+English labels:
+
+| value | label |
+|---|---|
+| `off` | Off |
+| `heating` | Heating |
+| `cooling` | Cooling |
+| `defrosting` | Defrosting |
+| `disinfecting` | Disinfecting |
+| `pompt_help` | Tap water heat assist |
+| `stand_by` | Standby |
+| `unknown` | (empty) |
+
+The app decodes any other value as `unknown` rather than failing. Our Operating
+State sensor reports such a value as unknown and logs a warning naming it, so the
+list can be extended.
+
 ## Why this matters (issue #20)
 
 A user with a Pomp MP without cooling reported that every `number`/`select`

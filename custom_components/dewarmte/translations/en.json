@@ -156,6 +156,21 @@
                     "off": "Disabled"
                 }
             }
+        },
+        "sensor": {
+            "state": {
+                "name": "Operating State",
+                "state": {
+                    "off": "Off",
+                    "heating": "Heating",
+                    "cooling": "Cooling",
+                    "defrosting": "Defrosting",
+                    "disinfecting": "Disinfecting",
+                    "pompt_help": "Tap water heat assist",
+                    "stand_by": "Standby",
+                    "unknown": "Unknown"
+                }
+            }
         }
     }
 }

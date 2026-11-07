@@ -21,6 +21,9 @@ class StatusData:
     is_on: bool | None = None
     fault_code: int | None = None
     is_connected: bool | None = None
+    # Operating state (AO/MP/PT), e.g. "heating", "defrosting". See STATE_OPTIONS
+    # in sensor.py for the vocabulary.
+    state: str | None = None
 
     # PT/HC device specific fields (DHW heat pump)
     top_boiler_temp: float | None = None
