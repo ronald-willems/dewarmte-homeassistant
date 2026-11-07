@@ -169,6 +169,46 @@ next regular poll. The diagnostic "Settings State" sensor exposes the value
 (with `version` as an attribute), and the coordinator logs a warning when a
 poll turns `sent` into `restored`, so a value that "did not stick" has a trace.
 
+## Settings screens and account capabilities (issue #34)
+
+The bundle of 2026-11-07 (sha256 `b08189517e2a…`) has three settings routes
+with no obvious counterpart in the integration: `/settings/heating-preference`,
+`/settings/gas-boiler-electric-heating` and `/settings/settings-tado-nox`. They
+are redesigns of screens we already cover, not new features:
+
+| Route | Writes | Integration entity |
+|---|---|---|
+| `/settings/heating-preference` | `settings/heating-performance/` (`heating_performance_mode`, `heating_performance_backup_temperature`) | Heating Performance Mode, Heating Performance Backup Temperature |
+| `/settings/gas-boiler-electric-heating` | `settings/backup-heating/` (`backup_heating_mode`) | Backup Heating Mode |
+| `/settings/settings-tado-nox` | `smart-control/` (the Pomp T "Smart heating control" page) | not exposed, see `SmartControl` in `openapi.yaml` |
+
+The bundle has exactly one POST site per endpoint and each sends only the
+fields listed, so these screens cannot change anything else. `OPTIONS
+settings/heating-preference/` returns 404: there is no endpoint of that name.
+
+The screens are gated on **account** flags from `GET /auth/user/` (schema
+`UserInfo` in `openapi.yaml`), not on the product:
+
+- `heating_pomp_type`: `AO`, `DWE`, `PT`, `HC`, `MP`, `MPE`
+- `backup_heating_device_type`: `ELEMENT`, `GASBOILER`, `NO_BACKUP`
+- `has_heating_pomp`, `has_element`, `has_element_connected`, `has_gas_boiler`
+
+The backup heating row is shown when `heating_performance_mode` is not
+`pomp_ao_only` and, on an MP, only when `has_element_connected` or
+`has_gas_boiler` is true. The backup temperature on the heating preference
+screen is hidden on an MP that has neither an element nor a gas boiler. The
+screen title follows `backup_heating_device_type`.
+
+We keep gating entities on the product id prefix: the account flags cannot
+tell two products on one account apart, and the API accepts the backup fields
+for every AO/MP regardless of these flags. Two things to keep in mind:
+
+- The app knows a pump type `MPE`. Our `product_id.startswith("MP ")` gating
+  would not match an `MPE ` product id. No user has reported one.
+- Our own account reports `has_gas_boiler: true` with
+  `backup_heating_device_type: NO_BACKUP`, so the two are not derived from each
+  other.
+
 ## Why this matters (issue #20)
 
 A user with a Pomp MP without cooling reported that every `number`/`select`

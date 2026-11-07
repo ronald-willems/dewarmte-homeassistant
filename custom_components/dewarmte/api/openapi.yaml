@@ -63,26 +63,69 @@ components:
 
     UserInfo:
       type: object
+      description: |
+        The account, as returned by GET /auth/user/ on 2026-11-07. These are
+        account-level flags: one account can own several products, so they do
+        not say which product has which capability. The web app uses them to
+        decide which settings rows to show (see docs/WEBAPP_SCHEMA.md, issue
+        #34); the integration gates entities on the product id instead and does
+        not call this endpoint.
       properties:
-        id:
+        user_id:
           type: string
           format: uuid
         email:
           type: string
           format: email
-        name:
+        role:
           type: string
-        created_at:
+          example: B2C_USER
+        own_ao:
+          type: boolean
+        own_dwe:
+          type: boolean
+        has_heating_pomp:
+          type: boolean
+        has_element:
+          type: boolean
+          description: The account owns a DeWarmte Element (electric backup heater).
+        has_element_connected:
+          type: boolean
+        has_gas_boiler:
+          type: boolean
+        heating_pomp_type:
           type: string
-          format: date-time
-        updated_at:
+          enum: [AO, DWE, PT, HC, MP, MPE]
+          description: |
+            The web app's vocabulary. MPE is a pump type the integration has
+            never seen on a product id; the product id prefixes we gate on are
+            "AO ", "MP " and "PT ".
+        backup_heating_device_type:
           type: string
-          format: date-time
+          enum: [ELEMENT, GASBOILER, NO_BACKUP]
+          description: |
+            Chooses the title of the web app's backup heating screen
+            ("Gas boiler" / "Electric heater"). An account can report
+            has_gas_boiler true together with NO_BACKUP.
+        owned_product_count:
+          type: integer
         smart_control_tc_accepted:
           type: boolean
           description: |
             Whether the account accepted the smart heating control terms. Until
             it has, the web app shows only the terms page for smart control.
+        nox_tc_accepted:
+          type: boolean
+        dewarmte_tc_accepted:
+          type: boolean
+        dewarmte_x_nox_tc_accepted:
+          type: boolean
+        fe_tc_accepted:
+          type: boolean
+          description: Frank Energie terms, used by smart control's flexibility trading.
+        tado_integration_status:
+          type: string
+          example: not_connected
 
     SmartControl:
       type: object
