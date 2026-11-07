@@ -168,6 +168,8 @@ Notes:
 
 ## Commits
 
+Work directly on `main` by default: this repo has a single developer, so feature branches only add a merge step. Use a branch only when asked to, or for experimental work that may be abandoned. This overrides any generic "branch first when on the default branch" guidance. Committing and pushing still need the maintainer's go-ahead.
+
 When the work belongs to a GitHub issue, start the commit subject with the issue number. This applies to feature requests as well as bugs:
 
 ```
