@@ -182,7 +182,13 @@ Notes:
 
 ## Commits
 
-Work directly on `main` by default: this repo has a single developer, so feature branches only add a merge step. Use a branch only when asked to, or for experimental work that may be abandoned. This overrides any generic "branch first when on the default branch" guidance. Committing and pushing still need the maintainer's go-ahead.
+Work directly on `main` by default: this repo has a single developer, so feature branches only add a merge step. Use a branch only when asked to, or for experimental work that may be abandoned. This overrides any generic "branch first when on the default branch" guidance.
+
+**Never commit or push unless the maintainer explicitly asks for it in the current request.** The maintainer reviews every code change in the working tree before it is committed. In practice:
+
+- After making changes, stop and leave them uncommitted. Summarise what changed and where; the maintainer runs `git diff` and decides.
+- A "commit it" covers only the changes on disk at that moment. Any later change, however small (a follow-up fix, a doc tweak, a rename), is uncommitted again until the maintainer says so. Do not infer permission from an earlier approval, from the size of the change, or from the fact that it finishes work the maintainer asked for.
+- Agents don't run `git push` unless explicitaly asked; normally the maintainer pushes.
 
 When the work belongs to a GitHub issue, start the commit subject with the issue number. This applies to feature requests as well as bugs:
 
