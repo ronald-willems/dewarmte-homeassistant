@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from ..api.client import DeWarmteApiClient, DeWarmteApiError
 from ..api.models.device import Device
 from .portal import PortalHistory, dutch_day_of, today_in_the_netherlands
+from .status import ImportStatus
 from .store import ImportedStatistics
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ class EnergyHistoryImporter:
         self._device = device
         self._portal = PortalHistory(api, device)
         self._lock = asyncio.Lock()
+        self.status = ImportStatus(hass, device)
 
     async def async_catch_up(self) -> None:
         """Import the completed hours that are not stored yet.
@@ -38,14 +40,15 @@ class EnergyHistoryImporter:
             _LOGGER.debug("Energy history import for %s already running", self._device.device_id)
             return
         async with self._lock:
+            self.status.running = True
             try:
                 await self._import_hours_not_stored_yet()
             except DeWarmteApiError as err:
                 # Stop at the failing day. Skipping it would move the resume
                 # point past a hole that no later run would come back to.
-                _LOGGER.warning(
-                    "Energy history import for %s stopped early: %s", self._device.device_id, err
-                )
+                self.status.stopped_early(err)
+            finally:
+                self.status.running = False
 
     async def async_catch_up_on_interval(self, _now: datetime) -> None:
         """`async_track_time_interval` action; the tick time itself is unused."""
@@ -59,9 +62,7 @@ class EnergyHistoryImporter:
             return
 
         days = _days_from(first_day, until=today_in_the_netherlands())
-        level = self._log_level_for(days)
-        _LOGGER.log(level, "Importing DeWarmte energy history for %s from %s (%d days)",
-                    self._device.device_id, first_day, len(days))
+        self.status.started(first_day, len(days), first_import=stored.next_hour is None)
 
         for count, day in enumerate(days, start=1):
             for hour in await self._portal.hours_of(day):
@@ -73,19 +74,13 @@ class EnergyHistoryImporter:
                               self._device.device_id, count, day)
 
         stored.save()
-        _LOGGER.log(level, "Energy history for %s complete: %d hours imported over %d days",
-                    self._device.device_id, stored.hours_added, len(days))
+        self.status.finished(stored)
 
     async def _first_day_to_import(self, stored: ImportedStatistics) -> date | None:
         """Carry on where the last run stopped, or find where the history begins."""
         if stored.next_hour is not None:
             return dutch_day_of(stored.next_hour)
         return await self._portal.find_first_day()
-
-    @staticmethod
-    def _log_level_for(days: list[date]) -> int:
-        """The hourly top-up is routine; only a multi-day walk is worth INFO."""
-        return logging.INFO if len(days) > 1 else logging.DEBUG
 
 
 def _days_from(first: date, *, until: date) -> list[date]:

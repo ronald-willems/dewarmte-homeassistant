@@ -314,3 +314,111 @@ def test_statistic_ids_are_valid_for_home_assistant(device_id: str, expected: st
     assert statistic_id(device, "heat_supplied") == expected
     for stat_id in all_statistic_ids(device):
         assert valid_statistic_id(stat_id), stat_id
+
+
+def _status():
+    from unittest.mock import MagicMock
+
+    from custom_components.dewarmte.energy_history.status import ImportStatus
+
+    device = MagicMock(device_id="abc")
+    device.info.name = "A-534"
+    return ImportStatus(MagicMock(), device)
+
+
+def _stored(hours_added: int, next_hour: datetime):
+    from unittest.mock import MagicMock
+
+    return MagicMock(hours_added=hours_added, next_hour=next_hour)
+
+
+def test_first_import_is_announced_in_the_bell(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start and finish of a long run replace each other in one notification."""
+    from custom_components.dewarmte.energy_history import status as status_module
+
+    sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        status_module.persistent_notification, "async_create",
+        lambda _hass, message, title, notification_id: sent.append((notification_id, message)),
+    )
+    status = _status()
+
+    status.started(date(2025, 5, 19), days=537, first_import=True)
+    status.finished(_stored(12414, datetime(2026, 11, 6, 12, tzinfo=timezone.utc)))
+
+    assert [nid for nid, _ in sent] == ["dewarmte_energy_history_abc"] * 2
+    assert "19 May 2025" in sent[0][1]
+    assert "12,414 hours" in sent[1][1]
+
+
+@pytest.mark.parametrize("days", [1, 2, 30])
+def test_catching_up_stays_out_of_the_bell(monkeypatch: pytest.MonkeyPatch, days: int) -> None:
+    """The hourly top-up, a restart after midnight (2 days) or a long outage."""
+    from custom_components.dewarmte.energy_history import status as status_module
+
+    sent = []
+    monkeypatch.setattr(status_module.persistent_notification, "async_create",
+                        lambda *args, **kwargs: sent.append(args))
+    status = _status()
+
+    status.started(date(2026, 11, 6), days=days, first_import=False)
+    status.stopped_early(RuntimeError("HTTP 502"))
+
+    assert sent == []
+    assert status.problem == "HTTP 502"
+
+
+@pytest.mark.asyncio
+async def test_options_screen_describes_the_import(monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.dewarmte.energy_history import status as status_module
+
+    stored = _stored(0, datetime(2026, 11, 6, 12, tzinfo=timezone.utc))
+    monkeypatch.setattr(status_module.ImportedStatistics, "load", AsyncMock(return_value=stored))
+    monkeypatch.setattr(status_module, "_readable", lambda instant: "6 November 2026 13:00")
+    status = _status()
+
+    assert await status_module.async_describe(MagicMock(), MagicMock(), None) == (
+        "imported up to 6 November 2026 13:00"
+    )
+    status.running = True
+    assert await status_module.async_describe(MagicMock(), MagicMock(), status) == "import running…"
+    status.running = False
+    status.problem = "HTTP 502"
+    assert "stopped early: HTTP 502" in await status_module.async_describe(MagicMock(), MagicMock(), status)
+    stored.next_hour = None
+    assert await status_module.async_describe(MagicMock(), MagicMock(), None) == "nothing imported"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("outcome", ["finds no history", "fails"])
+async def test_running_covers_the_whole_run(outcome: str) -> None:
+    """Running from the first request, even before the start date is known.
+
+    Otherwise the options screen says "nothing imported" while the first
+    import is still looking for where the history begins.
+    """
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from custom_components.dewarmte.api.client import DeWarmteApiError
+    from custom_components.dewarmte.energy_history.importer import EnergyHistoryImporter
+
+    importer = EnergyHistoryImporter(MagicMock(), MagicMock(), MagicMock())
+    seen_while_looking: list[bool] = []
+
+    async def find_first_day():
+        seen_while_looking.append(importer.status.running)
+        if outcome == "fails":
+            raise DeWarmteApiError("HTTP 502")
+        return None
+
+    stored = MagicMock(next_hour=None)
+    with patch.object(importer._portal, "find_first_day", find_first_day), patch(
+        "custom_components.dewarmte.energy_history.importer.ImportedStatistics.load",
+        AsyncMock(return_value=stored),
+    ):
+        await importer.async_catch_up()
+
+    assert seen_while_looking == [True]
+    assert importer.status.running is False
