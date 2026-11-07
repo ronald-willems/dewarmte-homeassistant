@@ -59,7 +59,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = 
         key="is_element_on",
         name="Electric Backup",
         device_class=BinarySensorDeviceClass.HEAT,
-        device_types=("PT",),  # PT-specific: DHW electric backup heating element
+        device_types=("PT",),  # PT-specific: DHW electric heater (API: status.gas_boiler)
     ),
     # Forced ("cool now") cooling state — read from operation settings, not status.
     DeWarmteBinarySensorEntityDescription(

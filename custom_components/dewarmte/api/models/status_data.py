@@ -28,7 +28,8 @@ class StatusData:
     # PT/HC device specific fields (DHW heat pump)
     top_boiler_temp: float | None = None
     bottom_boiler_temp: float | None = None
-    # Electric backup heating element state (from the tb-status endpoint).
+    # Electric backup heating element state. From tb-status, except on the
+    # Pomp T, where the client maps it from the product status `gas_boiler`.
     is_element_on: bool | None = None
 
     # bookkeeping of fields that could not be parsed

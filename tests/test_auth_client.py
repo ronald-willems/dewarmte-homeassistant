@@ -254,3 +254,52 @@ async def test_async_get_status_data_refreshes_before_expiry() -> None:
     assert session.get_calls[0].endswith("/customer/products/")
     assert len(session.get_calls) == 2  # product + tb-status
 
+
+
+@pytest.mark.asyncio
+async def test_pomp_t_electric_heater_comes_from_product_status() -> None:
+    """On a Pomp T the electric heater state is status.gas_boiler, not tb-status.
+
+    The web app's "Electric heater" tile reads the Pomp T status `gas_boiler`;
+    tb-status `is_element_on` stayed false while the heater was on (#18).
+    """
+    products = {
+        "results": [
+            {
+                "id": "pt-1",
+                "type": "PT",
+                "status": {
+                    "is_on": True,
+                    "heat_input": 1.0,
+                    "heat_output": 2.96,
+                    "electricity_consumption": 1.93,
+                    "gas_boiler": True,
+                    "top_boiler_temp": 44,
+                    "bottom_boiler_temp": 43,
+                },
+            }
+        ]
+    }
+    tb_status = {
+        "is_thermostat_on": False,
+        "is_gas_boiler_on": False,
+        "is_element_on": False,
+        "outdoor_temperature": 28,
+    }
+    session = FakeSession([FakeResponse(200, products), FakeResponse(200, tb_status)])
+    client = DeWarmteApiClient(
+        ConnectionSettings(username="user", password="pass", update_interval=60),
+        session,
+    )
+    client._auth = StubAuth()  # type: ignore[attr-defined]
+    device = Device(
+        device_id="pt-1",
+        product_id="PT Test",
+        access_token="token",
+        device_type="PT",
+    )
+
+    status = await client.async_get_status_data(device)
+
+    assert status is not None
+    assert status.is_element_on is True

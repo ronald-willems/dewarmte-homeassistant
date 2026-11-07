@@ -227,6 +227,13 @@ class DeWarmteApiClient:
                         _LOGGER.debug("Status data: %s", tb_response)
                         status_data.update_from_dict(tb_response)
 
+                    if device.device_type == "PT":
+                        # The Pomp T reports its electric heater in its own
+                        # status as `gas_boiler`; that is what the web app's
+                        # "Electric heater" tile shows. The account-wide
+                        # tb-status `is_element_on` does not reflect it.
+                        status_data.is_element_on = status_data.gas_boiler
+
                     if status_data.invalid_fields:
                         _LOGGER.debug(
                             "Device %s returned missing/invalid status fields: %s",

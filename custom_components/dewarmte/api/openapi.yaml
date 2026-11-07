@@ -546,7 +546,17 @@ paths:
             application/json:
               schema:
                 type: object
+                description: |
+                  Account-wide, not per device. On a Pomp T `is_element_on` does
+                  not reflect its electric heater: the web app shows that from
+                  the Pomp T's product `status.gas_boiler` instead (#18).
                 properties:
+                  is_thermostat_on:
+                    type: boolean
+                  is_gas_boiler_on:
+                    type: boolean
+                  is_element_on:
+                    type: boolean
                   outdoor_temperature:
                     type: number
                     format: float
