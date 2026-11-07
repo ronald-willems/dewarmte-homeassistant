@@ -348,7 +348,9 @@ class DeWarmteApiClient:
             # for unique_id stability, but the API renamed this field to
             # `thermostat_type`. Translate on the way out. Also pass the current
             # cooling schedule back unchanged: it is part of the request body but
-            # we don't edit schedules from HA, so we must not drop it.
+            # we don't edit schedules from HA, so we must not drop it. Exposing or
+            # writing schedules from HA is deliberately not planned (issue #31):
+            # the web app owns them.
             update_settings["thermostat_type"] = update_settings.pop("cooling_thermostat_type")
             update_settings["cooling_schedules"] = current_settings.cooling_schedules
         

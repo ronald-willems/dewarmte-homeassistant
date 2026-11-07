@@ -360,7 +360,14 @@ components:
           type: integer
         cooling_schedules:
           type: array
-          description: Weekly per-day cooling time ranges (managed via the web app).
+          description: >-
+            Weekly per-day cooling time ranges, managed via the web app. Each
+            entry has day, start_time, end_time, next_day_included and
+            target_temperature. Deliberately not exposed or written from Home
+            Assistant (issue #31, closed 2026-11-07): read-only exposure has no
+            practical use, and a write service was tried and proved too complex
+            because the API publishes no entry schema or validation rules. The
+            integration only passes the list back unchanged on cooling writes.
           items:
             type: object
         is_force_cooling_active:
