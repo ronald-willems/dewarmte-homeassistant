@@ -166,6 +166,18 @@ Notes:
 
 - `tests/README.md` describes optional scripts that hit the real DeWarmte service using a local `tests/secrets.yaml`. These are for manual verification only.
 
+## Commits
+
+When the work belongs to a GitHub issue, start the commit subject with the issue number. This applies to feature requests as well as bugs:
+
+```
+#28: Add Operating State sensor
+```
+
+- Every commit made for that issue gets the prefix, not only the final one. The release notes are built from `git log <last tag>..HEAD`, and the prefix links each change to its issue there and on GitHub.
+- Commit with `git commit -m "#28: ..."` (or `-F file`). Git treats lines starting with `#` as comments when it opens an editor (plain `git commit`, `--amend`, interactive rebase) and silently strips them, which takes the subject with them. If you must edit such a message, pass `--cleanup=whitespace`.
+- Work that has no issue gets no prefix. Don't invent one.
+
 ## Releasing
 
 Releases are made from `main` with `scripts/release.sh`, never by hand. HACS offers users the GitHub release tag, while Home Assistant shows the `manifest.json` version, so the two must match. The script makes sure they do.
