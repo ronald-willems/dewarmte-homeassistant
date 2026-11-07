@@ -60,6 +60,7 @@ SNAPSHOTS = REPO / "snapshots"
 CACHE = REPO / ".cache" / "dewarmte-watch"
 BUNDLES = CACHE / "bundles"
 ISSUES = CACHE / "issues"
+FILED = ISSUES / "filed"
 INTEGRATION = REPO / "custom_components" / "dewarmte"
 SECRETS = REPO / "tests" / "secrets.yaml"
 KEEP_BUNDLES = 5
@@ -467,8 +468,9 @@ def slug(text: str) -> str:
 
 
 def existing_markers() -> set[str]:
+    """Keys of every draft, pending or filed, so a change set is drafted once."""
     markers = set()
-    for path in ISSUES.glob("*.md"):
+    for path in list(ISSUES.glob("*.md")) + list(FILED.glob("*.md")):
         match = re.search(r"^key: (.+)$", path.read_text(encoding="utf-8"), re.M)
         if match:
             markers.add(match.group(1).strip())
@@ -530,6 +532,7 @@ def cmd_file_issues(args: argparse.Namespace) -> int:
     for path in drafts:
         fields, body = parse_draft(path)
         if "filed" in fields:
+            _mark_filed(path, fields["filed"])
             continue
         marker = f"{MARKER}: {fields['key']}"
         found = json.loads(gh("issue", "list", "--state", "all", "--limit", "5",
@@ -552,8 +555,13 @@ def cmd_file_issues(args: argparse.Namespace) -> int:
 
 
 def _mark_filed(path: Path, url: str) -> None:
+    """Record the issue URL and move the draft out of the pending folder."""
     text = path.read_text(encoding="utf-8")
-    path.write_text(text.replace("\n---\n", f"\nfiled: {url}\n---\n", 1), encoding="utf-8")
+    if "\nfiled: " not in text:
+        text = text.replace("\n---\n", f"\nfiled: {url}\n---\n", 1)
+    FILED.mkdir(parents=True, exist_ok=True)
+    (FILED / path.name).write_text(text, encoding="utf-8")
+    path.unlink()
 
 
 # --------------------------------------------------------------------------- run
