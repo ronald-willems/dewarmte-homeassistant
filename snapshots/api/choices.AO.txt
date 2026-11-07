@@ -1,0 +1,23 @@
+POST settings/heat-curve/ heat_curve_fixed_temperature (integer, optional)
+POST settings/heat-curve/ heat_curve_mode (choice, required): weather, fixed
+POST settings/heat-curve/ heat_curve_s1_outside_temp (integer, optional)
+POST settings/heat-curve/ heat_curve_s1_target_temp (integer, optional)
+POST settings/heat-curve/ heat_curve_s2_outside_temp (integer, optional)
+POST settings/heat-curve/ heat_curve_s2_target_temp (integer, optional)
+POST settings/heat-curve/ heat_curve_use_smart_correction (boolean, optional)
+POST settings/heat-curve/ heating_kind (choice, optional): radiator, floor, both, custom
+POST settings/heating-performance/ heating_performance_backup_temperature (integer, required)
+POST settings/heating-performance/ heating_performance_mode (choice, required): auto, pomp_ao_only, backup_only, pomp_ao_and_backup
+POST settings/backup-heating/ backup_heating_mode (choice, required): auto, eco, comfort
+POST settings/sound/ sound_compressor_power (choice, optional): min, med, max
+POST settings/sound/ sound_fan_speed (choice, optional): min, med, max
+POST settings/sound/ sound_mode (choice, required): silent, normal
+POST settings/advanced/ advanced_boost_mode_control (boolean, optional)
+POST settings/advanced/ advanced_thermostat_delay (choice, required): min, med, max
+POST settings/cooling/ cooling_control_mode (choice, required): scheduled, thermostat, heating_only, cooling_only
+POST settings/cooling/ cooling_duration (integer, optional)
+POST settings/cooling/ cooling_schedules (list, optional)
+POST settings/cooling/ cooling_temperature (integer, optional)
+POST settings/cooling/ thermostat_type (choice, required): heating_only, heating_and_cooling
+POST settings/warm-water/ warm_water_is_scheduled (boolean, required)
+POST settings/warm-water/ warm_water_ranges (field, required)

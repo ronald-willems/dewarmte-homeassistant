@@ -1,0 +1,6 @@
+gas_boiler
+is_element_on
+is_gas_boiler_on
+is_thermostat_on
+outdoor_temperature
+thermostat

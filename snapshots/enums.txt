@@ -1,0 +1,11 @@
+advanced_thermostat_delay: min, med, max
+backup_heating_mode: auto, eco, comfort
+cooling_control_mode: forced, thermostat, scheduled, heating_only, cooling_only
+heat_curve_mode: weather, fixed
+heating_kind: radiator, floor, both, custom
+heating_performance_mode: auto, pomp_ao_only, backup_only, pomp_ao_and_backup
+sound_compressor_power: min, med, max
+sound_fan_speed: min, med, max
+sound_mode: silent, normal
+state: applied, sent, restored, off, heating, cooling, defrosting, disinfecting, pompt_help, stand_by, unknown
+thermostat_type: heating_only, heating_and_cooling

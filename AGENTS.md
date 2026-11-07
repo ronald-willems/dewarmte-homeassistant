@@ -122,7 +122,21 @@ The web app at `mydewarmte.com` is a Flutter app, so `main.dart.js` contains the
 
 - **Use it when** a user reports breakage you cannot reproduce on your own account (e.g. a pump type or capability you don't own). If the official app requires a field, the API must be sending it — otherwise the web app would break for those users too, which is strong evidence against "the API omits this for my setup".
 - Findings are written up in `docs/WEBAPP_SCHEMA.md` (with the bundle's sha256/date) and folded into `api/openapi.yaml`. Re-run the script and update both when the hash no longer matches.
-- **Never commit `main.dart.js`**: 4.6 MB of minified output, re-minified on every DeWarmte deploy, so symbol names (`u0`, `A.md`, `B.K6`) change and diffs are noise. The script hardcodes none of them — it finds the model by the field names it reads.
+- **Never commit `main.dart.js`**: 6+ MB of minified output, re-minified on every DeWarmte deploy, so symbol names (`u0`, `A.md`, `B.K6`) change and diffs are noise. The parsers in `scripts/webapp_bundle.py` hardcode none of them — they find models by the field names they read and detect the two dart2js helpers they need (map index, map literal) per bundle. Downloaded bundles live in the gitignored `.cache/dewarmte-watch/bundles/`.
+
+**6. Watch for upstream changes before users report them**
+```bash
+python scripts/dewarmte-watch.py run            # fetch → snapshot → diff → draft issues
+python scripts/dewarmte-watch.py diff           # changes vs the committed snapshot
+python scripts/dewarmte-watch.py diff --base v2.4.3
+python scripts/dewarmte-watch.py file-issues    # dry run; --yes creates them
+```
+DeWarmte ships features silently; this turns their deploys into a reviewable diff. `snapshots/` holds sorted, one-item-per-line text extracted from the bundle (API endpoints, write bodies, fields read per model, enum vocabularies, the settings model) and, when `tests/secrets.yaml` exists, from the live API (response key paths and `OPTIONS` choices — never values or device ids). The files are the diff tool: `git diff snapshots/` is the review, and committing `snapshots/` records that a version was looked at.
+- `run` stops early when the bundle's Last-Modified and size match `snapshots/bundle.json`; `--force` overrides.
+- `draft` writes one file per topic to `.cache/dewarmte-watch/issues/` (all sections a feature like `legionella` touches, together). Delete a draft to reject it; `file-issues --yes` posts the rest with the `upstream-change` label plus `bug` or `enhancement`, and never files the same change set twice (marker comment in the body).
+- The bug/enhancement rule is deliberately simple: removed or changed upstream and *used in our code* (string, attribute or identifier; comments don't count) → bug; added upstream and unused → enhancement; everything else is shown in the diff only.
+- Flutter upgrades change the bundle hash without changing any section; that shows as "bundle changed, no snapshot changes" and only `bundle.json` needs committing.
+- All logic lives in the script so a later GitHub Actions cron is glue only: run `fetch` + `snapshot --no-api` + `diff`, open a PR with the snapshot change, review, then `file-issues` locally.
 
 **Which values does a settings field accept?** The backend is Django REST Framework, so an authenticated `OPTIONS` on a write endpoint returns the field metadata — including the authoritative list of choices, without writing anything:
 

@@ -1,0 +1,20 @@
+PATCH /v1/auth/reset_password/set_password/: email, new_password, validation_code
+PATCH /v1/customer/products/{id}/smart-control/: is_control_enabled, is_frank_energie_connected, pompt_max_temp, pompt_min_temp, use_dynamic_tariff, use_flexibility_trading, use_solar_optimization
+POST /v1/auth/reset_password/request_otp/: email
+POST /v1/auth/token/: email, password
+POST /v1/auth/token/refresh/: access, refresh
+POST /v1/customer/products/{id}/settings/advanced/: advanced_boost_mode_control, advanced_thermostat_delay
+POST /v1/customer/products/{id}/settings/backup-heating/: backup_heating_mode
+POST /v1/customer/products/{id}/settings/cooling/: cooling_control_mode, cooling_duration, cooling_schedules, cooling_temperature, thermostat_type
+POST /v1/customer/products/{id}/settings/cooling/start-forced/: force_cool_setpoint, forced_duration
+POST /v1/customer/products/{id}/settings/cooling/stop-forced/: 
+POST /v1/customer/products/{id}/settings/heat-curve/: heat_curve_fixed_temperature, heat_curve_mode, heat_curve_s1_outside_temp, heat_curve_s1_target_temp, heat_curve_s2_outside_temp, heat_curve_s2_target_temp, heat_curve_use_smart_correction, heating_kind
+POST /v1/customer/products/{id}/settings/heating-performance/: heating_performance_backup_temperature, heating_performance_mode
+POST /v1/customer/products/{id}/settings/legionella/: legionella_protection_day, legionella_protection_time
+POST /v1/customer/products/{id}/settings/set-nickname/: nickname
+POST /v1/customer/products/{id}/settings/sound/: sound_compressor_power, sound_fan_speed, sound_mode
+POST /v1/customer/products/{id}/settings/warm-water/: warm_water_is_scheduled, warm_water_ranges
+POST /v1/integrations/customer/tado-homes/assign-products/: 
+POST /v1/integrations/smart-control/accept-tc/: smart_control_tc_accepted
+POST /v1/integrations/tado/accept-tc/: tado_tc_accepted
+POST /v1/integrations/tado/auth/connect/: 

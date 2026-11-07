@@ -1,0 +1,25 @@
+_single: action, alias, amount, app, app_name, app_version, args, asset, autocorrect, autofill, backup_heating_device_type, base, browser, build_number, charset, co2, code, codec, color, context, cooling_temperature, core, created_at, culture, data, decimal, deltas, device, dewarmte_x_nox_tc_accepted, dpr, dwe_consumption, dx, dy, electric_backup_usage, electric_backup_usage_sum, electricity_sum, email, enabled, encoded, errors, extent, fallback, family, fault_code, fe_tc_accepted, fields, filename, fill, flags, flutter, fonts, force_cooling_temperature, gpu, groups, handled, has_element, has_heating_pomp, heat_curve_fixed_temperature, heat_curve_mode, heat_curve_s1_outside_temp, heat_curve_s1_target_temp, heat_curve_s2_outside_temp, heat_curve_s2_target_temp, heat_curve_use_smart_correction, heat_sum, heating_kind, heating_performance_backup_temperature, heating_performance_mode, height, hints, href, humidity, id, integrity, is_connected, is_control_enabled, is_element_on, is_force_cooling_active, is_frank_energie_connected, is_gas_boiler_on, is_maintenance_on, is_on, is_sending_data, is_thermostat_on, is_training_mode, key, kind, label, legionella_protection_day, location, message, method, name, no_tado_equivalent, nox_tc_accepted, offset, opacity, order, origin, os, outdoor_temperature, owned_product_count, package_name, parameters, params, period, persisted_at_in_ms, persistent, platform, policy, pompt_max_temp, pompt_min_temp, product, progress, properties, replace, runtimes, saved_trees, saves, setpoint, sound_compressor_power, sound_fan_speed, sound_mode, state, status, stroke, tado_home, temperature, text, trace, transform, type, uri, url, use_dynamic_tariff, use_flexibility_trading, use_solar_optimization, user_id, value, variant_source, version, vgas, warm_water_is_scheduled, warm_water_ranges, width, x, y
+access: access, refresh
+actual_temperature: actual_temperature, electric_backup_usage, electricity_consumption, heat_input, heat_output, is_on, supply_temperature, target_temperature, time, water_flow
+advanced_boost_mode_control: advanced_boost_mode_control, advanced_thermostat_delay, backup_heating_mode, cooling_control_mode, cooling_duration, cooling_schedules, cooling_temperature, thermostat_type
+bottom_boiler_temp: bottom_boiler_temp, electricity_consumption, errors, gas_boiler, heat_input, heat_output, is_on, target_temperature, time, top_boiler_temp
+code: code, message
+config: config, token
+connected: connected, name, show_assign_modal
+cooling: cooling, id, name, nickname, related_ao, type
+cop: cop, electricity_sum, has_dwe, heat_sum, saves
+data: data, time_end, time_start, timespan
+day: day, end_time, next_day_included, start_time, target_temperature
+display: display, visibility
+electricity_consumed: electricity_consumed, heat_supplied, key, temperature
+experiment_id: experiment_id, is_experiment_active, is_qa_tester, value
+expires_at: expires_at, url
+has_element_connected: has_element_connected, has_gas_boiler, heating_pomp_type, smart_control_tc_accepted
+height: height, width
+id: id, name, tado_home_id
+integrity: integrity, url
+language: language, languages, platform, product, vendor
+legionella_protection_time: legionella_protection_time, state, version
+location: location, state
+maintenance_message: maintenance_message, maintenance_title
+money: money, start_saving_date
