@@ -1,56 +1,34 @@
-# DeWarmte Integration Documentation
+# DeWarmte integration documentation
 
-## Sequence Diagram
+This folder holds the documentation that is not in the main [README](../README.md).
 
-The `sequence_diagram.puml` file contains a PlantUML sequence diagram that shows the interaction flow between different components of the DeWarmte integration.
+## For users
 
-### Viewing the Diagram
+- [ENTITIES.md](ENTITIES.md): every entity the integration creates, with a one-sentence description and the device types it applies to. Regenerate it with the prompt in [REGENERATE_ENTITY_DOCS_PROMPT.md](REGENERATE_ENTITY_DOCS_PROMPT.md) after adding or changing entities.
 
-There are several ways to view the sequence diagram:
+## For developers
 
-1. **Online PlantUML Renderer**:
-   - Copy the contents of `sequence_diagram.puml`
-   - Visit [PlantUML Online Server](http://www.plantuml.com/plantuml/uml/)
-   - Paste the contents and view the rendered diagram
+- [WEBAPP_SCHEMA.md](WEBAPP_SCHEMA.md): what the official web app requires from the settings API (required and nullable fields, write bodies), extracted from the app's own JavaScript bundle. This is the reference when a user's payload differs from what the integration expects. See `scripts/extract-webapp-schema.py`.
+- [AGENTS.md](../AGENTS.md) in the repository root: repository layout, Home Assistant rules the code follows, and the local test, deploy and log workflow.
+- `../custom_components/dewarmte/api/openapi.yaml`: the DeWarmte API as the integration uses it.
 
-2. **VS Code**:
-   - Install the "PlantUML" extension
-   - Open `sequence_diagram.puml`
-   - Press Alt+D to preview the diagram
+## Diagrams
 
-3. **Command Line**:
-   ```bash
-   # Install PlantUML (requires Java)
-   brew install plantuml  # macOS
-   apt-get install plantuml  # Ubuntu/Debian
+The PlantUML sources describe how the integration is put together. The PNGs in `images/` are generated from them with `scripts/generate_diagrams.sh` (needs `plantuml`, which needs Java).
 
-   # Generate PNG
-   plantuml sequence_diagram.puml
-   ```
+| File | Shows |
+|------|-------|
+| `class_diagram.puml` | The classes of the integration: coordinator, API client, models and entities. |
+| `setup_sequence.puml` | What happens when the integration is set up: login, device discovery, one coordinator per device, platform setup. |
+| `update_cycle_sequence.puml` | One polling cycle: the coordinator fetches status and settings and the entities update. |
+| `switch_control_sequence.puml` | What happens when a setting is changed from Home Assistant: the write, the API's echo of the new settings, and the entity update. |
 
-## Diagram Components
+`DeWarmte Integration Flow.png` is an older overview of the same flow.
 
-The sequence diagram shows:
+### Viewing a diagram
 
-1. **Home Assistant Components**:
-   - Home Assistant Core
-   - DeWarmte Coordinator
-   - DeWarmte Sensors
-   - DeWarmte API Client
+- **Online**: paste the file's contents into the [PlantUML server](http://www.plantuml.com/plantuml/uml/).
+- **VS Code**: install the PlantUML extension, open the file and press Alt+D.
+- **Command line**: `brew install plantuml` (macOS) or `apt-get install plantuml`, then `scripts/generate_diagrams.sh` to regenerate all PNGs, or `plantuml docs/<file>.puml` for one.
 
-2. **External Components**:
-   - MyDeWarmte Website
-
-3. **Key Flows**:
-   - Integration initialization
-   - Data update cycle (60-second intervals)
-   - Error handling
-   - Cleanup process
-
-## Integration Architecture
-
-The integration follows a coordinator pattern where:
-1. The coordinator manages the update cycle
-2. The API client handles communication with mydewarmte.com
-3. Sensor entities represent the various data points
-4. Home Assistant Core manages the lifecycle 
+The diagrams were drawn for the first version and are not updated with every change. The code is authoritative; treat them as an introduction to the structure (coordinator per device, API client, entities reading from coordinator data), not as a specification.

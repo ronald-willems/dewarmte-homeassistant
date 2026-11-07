@@ -1,32 +1,39 @@
 # DeWarmte Integration for Home Assistant
 
-This integration allows you to monitor and control your DeWarmte heat pump directly from Home Assistant.
+Monitor and control your DeWarmte heat pump from Home Assistant. Supports the Pomp AO, Pomp MP, Pomp T and Heatcycle.
+
+This integration is *not* an official DeWarmte integration.
 
 ## Features
 
-- Monitor heat pump status and performance
-- Track energy consumption and heat output
-- Adjust all settings
+- Sensors for power, energy, temperatures, fault code and operating state
+- Energy (kWh) and CoP sensors for the Energy dashboard
+- Import of DeWarmte's own hourly energy history, including the years before you installed this integration
+- All settings from the DeWarmte app: heat curve, heating performance, backup heating, sound, cooling (Pomp AO/MP), warm water, smart heating control and legionella protection (Pomp T)
+- Forced cooling ("cool now") services for automations
 
-Not working yet:
-- Adjusting Cooling settings
-- Other devices than PompAO
+Full documentation: [README](https://github.com/ronald-willems/dewarmte-homeassistant#readme) and [entity reference](https://github.com/ronald-willems/dewarmte-homeassistant/blob/main/docs/ENTITIES.md).
 
 ## Screenshots
 
-### Device Configuration
-![Device Info](images/configuration.png)
-_Detailed device information and status_
+### Setup
+![Setup](https://raw.githubusercontent.com/ronald-willems/dewarmte-homeassistant/main/custom_components/dewarmte/images/configuration.png)
+_Log in with your MyDeWarmte account_
 
-### Sensors Overview
-![Sensors Overview](images/sensors.png)
-_Real-time monitoring of your heat pump's performance_
+### Sensors
+![Sensors](https://raw.githubusercontent.com/ronald-willems/dewarmte-homeassistant/main/custom_components/dewarmte/images/sensors.png)
+_Live status, energy and CoP of a Pomp AO_
 
-### Energy Dashboard Integration
-![Energy Dashboard](images/energy.png)
-_Track your heat pump's energy consumption over time_
+### Settings
+![Settings](https://raw.githubusercontent.com/ronald-willems/dewarmte-homeassistant/main/custom_components/dewarmte/images/settings.png)
+_The device page with all settings as controls_
 
+### Energy dashboard
+![Energy dashboard](https://raw.githubusercontent.com/ronald-willems/dewarmte-homeassistant/main/custom_components/dewarmte/images/energy-dashboard.png)
+_The heat pump's electricity consumption in the Energy dashboard, from DeWarmte's own hourly history_
 
+![Add a device in the Energy dashboard](https://raw.githubusercontent.com/ronald-willems/dewarmte-homeassistant/main/custom_components/dewarmte/images/energy.png)
+_Under Individual devices, pick either the imported statistics (chart icon) or the DeWarmte energy sensors further down the list, not both_
 
 ## Support
 
