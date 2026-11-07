@@ -376,10 +376,14 @@ class DeWarmteApiClient:
         # A write is answered with the complete new settings object, so callers
         # can show the new state without polling for it. Smart control is the
         # exception: it answers with only its own fields, so merge those in.
+        # The other way round, a settings echo has no smart control fields, so
+        # keep the ones just read (issue #24: they went unknown after a write).
+        smart_control_keys = SETTING_GROUPS["smart_control"].keys
         try:
             if group.endpoint == "smart-control":
                 return replace(current_settings, **{k: response_data[k] for k in group.keys})
-            return DeviceOperationSettings.from_api_response(response_data)
+            settings = DeviceOperationSettings.from_api_response(response_data)
+            return replace(settings, **{k: getattr(current_settings, k) for k in smart_control_keys})
         except Exception as err:
             # The write itself succeeded - only the echo was unusable - so this
             # must not look like a failed action. Callers fall back to polling.

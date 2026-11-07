@@ -54,6 +54,17 @@ class RoutingSession:
         self.patches.append((url, json))
         return self._patch_response or FakeResponse(200, {})
 
+    def post(
+        self,
+        url: str,
+        *,
+        headers: Optional[Dict[str, str]] = None,
+        json: Optional[Dict[str, Any]] = None,
+    ) -> FakeResponse:
+        # A settings write is echoed as the full settings object, which has no
+        # smart control fields.
+        return FakeResponse(200, NEW_SETTINGS)
+
 
 def _make_client(
     device_type: str = "PT",
@@ -145,3 +156,20 @@ async def test_failed_write_raises_with_api_message() -> None:
 
     with pytest.raises(DeWarmteApiError, match="Terms not accepted"):
         await client.async_update_operation_settings(device, "is_control_enabled", True)
+
+
+@pytest.mark.asyncio
+async def test_settings_write_keeps_smart_control_state() -> None:
+    """Regression (#24): a warm water write must not blank smart control.
+
+    The settings echo has no smart control fields; before the fix they came
+    back as None, so the switch and min/max showed unknown until the next poll.
+    """
+    client, _session, device = _make_client()
+
+    settings = await client.async_update_operation_settings(device, "warm_water_target_temperature", 50)
+
+    assert settings is not None
+    assert settings.is_control_enabled is False
+    assert settings.pompt_min_temp == 40
+    assert settings.pompt_max_temp == 55
