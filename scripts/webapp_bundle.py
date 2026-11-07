@@ -338,6 +338,6 @@ def integration_handling(settings_model_path: str) -> dict[str, str]:
     handling = {name: "required key" for name in re.findall(r'data\["([a-z_0-9]+)"\]', model)}
     for name in re.findall(r'data\.get\("([a-z_0-9]+)"', model):
         handling[name] = "optional key"
-    for name in re.findall(r'data\["([a-z_0-9]+)"\] is not None', model):
-        handling[name] += ", null ok"
+    for name in re.findall(r'data(?:\["([a-z_0-9]+)"\]|\.get\("([a-z_0-9]+)"\)) is not None', model):
+        handling["".join(name)] += ", null ok"
     return handling

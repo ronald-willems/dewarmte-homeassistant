@@ -76,7 +76,8 @@ The integration provides the following entities:
 
 ### Settings
 All settings that can be adjusted in web app or mobile app are availabe through this integration
-For PompT the warm water temperature can be adjusted to a fixed target setting. Schedules are not (yet) supported
+For PompT the warm water temperature can be adjusted to a fixed target setting. Schedules are not (yet) supported.
+For PompT the weekly legionella protection run can be scheduled (weekday and start time).
 
 ## Troubleshooting
 

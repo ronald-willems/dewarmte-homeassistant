@@ -69,13 +69,23 @@ The casts throw on a missing or null value:
 | `sound_fan_speed` | required enum | required key |
 | `warm_water_is_scheduled` | required bool | optional key (we are more lenient) |
 | `warm_water_ranges` | required list | optional key (we are more lenient) |
+| `legionella_protection_day` | **nullable** num | optional key, null ok |
+| `legionella_protection_time` | **nullable** String | optional key, null ok |
 | `version` | required num | required key |
 | `state` | required enum | not read (we read `is_applied` instead) |
 
-**Our nullability matches theirs exactly.** The three fields the official client
-allows to be null are the same three the integration guards with `is not None`.
-We are stricter than the app nowhere, and more lenient only on the two warm-water
-fields.
+**Our nullability matches theirs exactly.** The five fields the official client
+allows to be null are the same five the integration treats as optional. We are
+stricter than the app nowhere, and more lenient only on the two warm-water
+fields and on the two legionella fields, which we also accept as absent.
+
+The legionella settings are a Pomp T feature: the app's settings menu adds the
+"Legionella protection" entry in the same block as "Warm water", only when the
+product type is `pt`, and only when the Firebase Remote Config flag
+`feature_legionella_enabled` (compiled-in default `true`) is on. AO and MP never
+see the screen, although the API returns the fields for them too (an AO returns
+`3` / `"00:00"`, a column default). The integration gates its two legionella
+entities to PT for that reason (issue #29).
 
 ## Write bodies per endpoint
 
@@ -94,6 +104,7 @@ settings/advanced/              advanced_boost_mode_control, advanced_thermostat
 settings/cooling/               thermostat_type, cooling_control_mode, cooling_temperature,
                                 cooling_duration, cooling_schedules
 settings/warm-water/            warm_water_is_scheduled, warm_water_ranges
+settings/legionella/            legionella_protection_day, legionella_protection_time
 settings/set-nickname/          nickname
 ```
 

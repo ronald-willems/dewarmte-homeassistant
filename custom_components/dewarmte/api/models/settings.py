@@ -65,6 +65,12 @@ class DeviceOperationSettings:
     use_solar_optimization: Optional[bool] = None
     use_flexibility_trading: Optional[bool] = None
 
+    # Legionella protection (Pomp T): weekday of the weekly disinfecting run,
+    # 1 (Monday) to 7 (Sunday), and its "HH:MM" start time. The web app's
+    # model declares both nullable: an unconfigured pump sends null.
+    legionella_protection_day: Optional[int] = None
+    legionella_protection_time: Optional[str] = None
+
     @classmethod
     def from_api_response(cls, data: Dict[str, Any]) -> "DeviceOperationSettings":
         """Create settings from API response."""
@@ -112,6 +118,16 @@ class DeviceOperationSettings:
             ],
             version=int(data["version"]),
             is_applied=bool(data["is_applied"]),
+            legionella_protection_day=(
+                int(data["legionella_protection_day"])
+                if data.get("legionella_protection_day") is not None
+                else None
+            ),
+            legionella_protection_time=(
+                str(data["legionella_protection_time"])
+                if data.get("legionella_protection_time") is not None
+                else None
+            ),
             **{key: data.get(key) for key in SETTING_GROUPS["smart_control"].keys},
         )
 
@@ -148,6 +164,13 @@ SETTING_GROUPS = {
     "warm_water": SettingsGroup(
         endpoint="warm-water",
         keys=["warm_water_is_scheduled", "warm_water_target_temperature"],
+    ),
+    # Pomp T only: the web app lists this screen next to Warm water for PT
+    # devices and nowhere else (issue #29). Both keys are required by the
+    # endpoint, so a write always sends the pair.
+    "legionella": SettingsGroup(
+        endpoint="legionella",
+        keys=["legionella_protection_day", "legionella_protection_time"],
     ),
     # Not under settings/ and written with PATCH. The web app sends exactly
     # these keys (the read-only is_training_mode is left out).

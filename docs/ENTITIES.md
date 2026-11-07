@@ -53,6 +53,8 @@
 | Cooling Temperature | Target temperature for cooling mode (when cooling is supported). | AO, MP |
 | Cooling Duration | Maximum duration (seconds) for a cooling run (when cooling is supported). | AO, MP |
 | Warm Water Target Temperature | Target temperature for domestic hot water. | PT |
+| Legionella Protection Day | Weekday (monday–sunday) of the weekly legionella protection run, which heats the tank to 60 ℃ for 20 minutes. | PT |
+| Legionella Protection Time | Start time of the weekly legionella protection run. | PT |
 | Heat Curve Mode | Whether the heat curve uses weather compensation or a fixed temperature. | AO, MP |
 | Heating Kind | Type of heating system: custom, floor, radiator, or both. | AO, MP |
 | Heating Performance Mode | How heat pump and backup work together: auto, heat pump only, heat pump and backup, or backup only. | AO, MP |

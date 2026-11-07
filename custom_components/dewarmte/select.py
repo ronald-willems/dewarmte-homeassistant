@@ -88,10 +88,22 @@ SELECTABLE_COOLING_CONTROL_MODES = [
     mode.value for mode in CoolingControlMode if mode is not CoolingControlMode.FORCED
 ]
 
+# Weekday options for the legionella protection run. The API wants the number:
+# OPTIONS settings/legionella/ -> actions.POST.legionella_protection_day.choices
+# is 1 = Monday ... 7 = Sunday.
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+LEGIONELLA_DAY_VALUES = {name: number for number, name in enumerate(WEEKDAYS, start=1)}
+
 @dataclass(frozen=True)
 class DeWarmteSelectEntityDescription(SelectEntityDescription):
     """Class describing DeWarmte select entities."""
     options_enum: type[Enum] | None = None
+    # Device types this select applies to. Most settings belong to the space
+    # heating pumps; Pomp T has only its warm water settings.
+    device_types: tuple[str, ...] = ("AO", "MP")
+    # option -> value the API expects, for settings whose API values are not
+    # the option strings themselves. None means the options are written as-is.
+    api_values: dict[str, Any] | None = None
 
 MODE_SELECTS = {
     "heat_curve_mode": DeWarmteSelectEntityDescription(
@@ -154,6 +166,13 @@ MODE_SELECTS = {
         options_enum=CoolingControlMode,
         options=SELECTABLE_COOLING_CONTROL_MODES,
     ),
+    "legionella_protection_day": DeWarmteSelectEntityDescription(
+        key="legionella_protection_day",
+        name="Legionella Protection Day",
+        options=WEEKDAYS,
+        api_values=LEGIONELLA_DAY_VALUES,
+        device_types=("PT",),  # PT-specific: weekly disinfecting run of the hot water tank
+    ),
 }
 
 async def async_setup_entry(
@@ -168,13 +187,10 @@ async def async_setup_entry(
         coordinators = [coordinators]
 
     for coordinator in coordinators:
-        # Only create select entities for AO and MP devices (T devices have no settings)
-        if not coordinator.device.product_id.startswith(("AO ", "MP ")):
-            continue
-            
-        # Filter out cooling entities if cooling is not supported
         entities = []
         for description in MODE_SELECTS.values():
+            if coordinator.device.device_type not in description.device_types:
+                continue
             # Skip cooling entities if cooling is not supported
             if description.key in SETTING_GROUPS["cooling"].keys:
                 assert coordinator.device is not None, "Coordinator device must not be None"
@@ -216,15 +232,20 @@ class DeWarmteSelectEntity(CoordinatorEntity[DeWarmteDataUpdateCoordinator], Sel
             return None
 
         settings = self.coordinator._cached_settings
-        key = self.dewarmte_description.key
+        description = self.dewarmte_description
 
         # All settings are now at the root level
-        return getattr(settings, key, None)
+        value = getattr(settings, description.key, None)
+        if description.api_values is None or value is None:
+            return value
+        return next((option for option, api_value in description.api_values.items() if api_value == value), None)
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
+        description = self.dewarmte_description
+        value = option if description.api_values is None else description.api_values[option]
         try:
-            await self.coordinator.async_write_setting(self.dewarmte_description.key, option)
+            await self.coordinator.async_write_setting(description.key, value)
         except DeWarmteApiError as err:
             # Surface the API's reason (e.g. a rejected value) instead of an
             # "Unexpected error" toast with no explanation.

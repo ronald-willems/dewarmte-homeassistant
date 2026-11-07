@@ -418,6 +418,21 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WarmWaterRange'
+        legionella_protection_day:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 7
+          description: >-
+            Weekday of the weekly legionella protection run, 1 (Monday) to 7
+            (Sunday). Pomp T only: the web app shows the screen for PT devices
+            only, behind its `feature_legionella_enabled` remote-config flag.
+            Null while unconfigured. Other product types still return the
+            field (an AO returns 3 / "00:00"), which is a column default.
+        legionella_protection_time:
+          type: string
+          nullable: true
+          description: Start time of the legionella protection run, as `HH:MM`.
         version:
           type: integer
         state:
@@ -733,6 +748,47 @@ paths:
       responses:
         '200':
           description: Advanced settings updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customer/products/{deviceId}/settings/legionella/:
+    parameters:
+      - $ref: '#/components/parameters/deviceId'
+    post:
+      summary: Update legionella protection schedule (Pomp T)
+      description: |
+        Set the weekday and start time of the weekly legionella protection run,
+        which heats the hot water tank to 60 °C for 20 minutes (the status
+        `state` reports `disinfecting` while it runs). Both values must be
+        provided together; the endpoint rejects null. Choices from
+        `OPTIONS` on this endpoint: 1 = Monday ... 7 = Sunday.
+      operationId: updateLegionellaSettings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                legionella_protection_day:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                legionella_protection_time:
+                  type: string
+                  example: "02:00"
+              required:
+                - legionella_protection_day
+                - legionella_protection_time
+      responses:
+        '200':
+          description: Legionella settings updated successfully
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
