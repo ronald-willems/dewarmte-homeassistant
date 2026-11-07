@@ -15,8 +15,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api.client import DeWarmteApiClient
 from .api.models.config import ConnectionSettings
 from .energy_history import async_delete_history
+from .energy_history.status import async_describe, dismiss_notification
 from .const import (
-    CONF_DELETE_ENERGY_HISTORY,
     CONF_IMPORT_ENERGY_HISTORY,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
@@ -30,6 +30,9 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
         vol.Optional(CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL): int,
+        # On for new installs only: existing entries have no such option and
+        # read it as off.
+        vol.Optional(CONF_IMPORT_ENERGY_HISTORY, default=True): bool,
     }
 )
 
@@ -95,11 +98,21 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
                         ),
                     },
+                    options={
+                        CONF_IMPORT_ENERGY_HISTORY: user_input.get(
+                            CONF_IMPORT_ENERGY_HISTORY, True
+                        ),
+                    },
                 )
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
+
+
+def _status_of(coordinator):
+    importer = coordinator.energy_history
+    return importer.status if importer is not None else None
 
 
 class InvalidAuth(HomeAssistantError):
@@ -148,51 +161,84 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_energy_history(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Turn the experimental energy-history import on or off.
+        """Show how the import is doing, with its setting and its one action."""
+        return self.async_show_menu(
+            step_id="energy_history",
+            menu_options=["energy_history_settings", "energy_history_delete"],
+            description_placeholders={"status": await self._energy_history_status()},
+        )
 
-        Submitting reloads the entry (see the update listener), and setup starts
-        the import when the option is on -- so switching it on here is what
-        kicks off the first, long, catch-up run.
+    async def async_step_energy_history_settings(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Switch the import on or off.
+
+        A changed option reloads the entry, and setup starts the import when it
+        is on.
         """
         if user_input is not None:
-            import_on = user_input[CONF_IMPORT_ENERGY_HISTORY]
-            unchanged = import_on == self._config_entry.options.get(
-                CONF_IMPORT_ENERGY_HISTORY, False
+            return self.async_create_entry(
+                title="", data={**self._config_entry.options, **user_input}
             )
-            if user_input.get(CONF_DELETE_ENERGY_HISTORY):
-                entry_id = self._config_entry.entry_id
-                devices = [
-                    coordinator.device
-                    for coordinator in self.hass.data[DOMAIN].get(entry_id, [])
-                    if coordinator.device is not None
-                ]
-                await async_delete_history(self.hass, devices)
-                # An unchanged option fires no update listener, so with the
-                # import left on nothing would rebuild the history until the
-                # next hourly run.
-                if import_on and unchanged:
-                    self.hass.config_entries.async_schedule_reload(entry_id)
-
-            updated_options = {
-                **self._config_entry.options,
-                CONF_IMPORT_ENERGY_HISTORY: user_input[CONF_IMPORT_ENERGY_HISTORY],
-            }
-            # Deleting is a one-off action, not a setting; never persist it.
-            updated_options.pop(CONF_DELETE_ENERGY_HISTORY, None)
-            return self.async_create_entry(title="", data=updated_options)
 
         schema = vol.Schema(
             {
                 vol.Required(
-                    CONF_IMPORT_ENERGY_HISTORY,
-                    default=self._config_entry.options.get(
-                        CONF_IMPORT_ENERGY_HISTORY, False
-                    ),
+                    CONF_IMPORT_ENERGY_HISTORY, default=self._energy_history_on
                 ): bool,
-                vol.Required(CONF_DELETE_ENERGY_HISTORY, default=False): bool,
             }
         )
-        return self.async_show_form(step_id="energy_history", data_schema=schema)
+        return self.async_show_form(step_id="energy_history_settings", data_schema=schema)
+
+    async def async_step_energy_history_delete(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Delete the imported history; with the import on, that means import it again."""
+        if user_input is not None:
+            await self._delete_energy_history()
+            return self.async_create_entry(title="", data=dict(self._config_entry.options))
+
+        if self._energy_history_on:
+            what_happens = "This deletes the imported history and imports it again from the start."
+        else:
+            what_happens = (
+                "This deletes the imported history. "
+                "Switch the import on in Settings to import it again."
+            )
+        return self.async_show_form(
+            step_id="energy_history_delete",
+            data_schema=vol.Schema({}),
+            description_placeholders={"what_happens": what_happens},
+        )
+
+    @property
+    def _energy_history_on(self) -> bool:
+        return self._config_entry.options.get(CONF_IMPORT_ENERGY_HISTORY, False)
+
+    @property
+    def _coordinators(self) -> list:
+        return self.hass.data[DOMAIN].get(self._config_entry.entry_id, [])
+
+    async def _energy_history_status(self) -> str:
+        lines = [
+            f"{coordinator.device.info.name}: "
+            + await async_describe(self.hass, coordinator.device, _status_of(coordinator))
+            for coordinator in self._coordinators
+            if coordinator.device is not None
+        ]
+        return "\n".join(lines) or "unknown, the integration is not loaded"
+
+    async def _delete_energy_history(self) -> None:
+        """Stop a running import first, so it cannot write on top of the deletion."""
+        entry_id = self._config_entry.entry_id
+        devices = [c.device for c in self._coordinators if c.device is not None]
+        if self._energy_history_on:
+            await self.hass.config_entries.async_unload(entry_id)
+        await async_delete_history(self.hass, devices)
+        for device in devices:
+            dismiss_notification(self.hass, device)
+        if self._energy_history_on:
+            self.hass.config_entries.async_schedule_reload(entry_id)
 
     async def async_step_credentials(
         self, user_input: dict[str, Any] | None = None

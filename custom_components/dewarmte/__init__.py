@@ -119,6 +119,7 @@ def _async_start_energy_history(
         if coordinator.device is None:
             continue
         importer = EnergyHistoryImporter(hass, coordinator.api, coordinator.device)
+        coordinator.energy_history = importer
         entry.async_create_background_task(
             hass,
             importer.async_catch_up(),
@@ -164,6 +165,8 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
         )
         self.api = api
         self._device = device
+        # Set only while the energy history import is switched on.
+        self.energy_history: EnergyHistoryImporter | None = None
 
     @property
     def device(self) -> Optional[Device]:

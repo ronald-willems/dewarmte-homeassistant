@@ -103,6 +103,16 @@ bash scripts/ha-logs.sh writes     # settings-write trail (POST bodies + respons
   `POST /api/services/logger/set_level` body `{"custom_components.dewarmte":"debug"}`.
 - A HAR file cannot capture HA's traffic (HA is a backend, not a browser); use the logs. HARs only capture the mydewarmte.com web app in a browser.
 
+**4b. Check the imported energy history (read-only)**
+```bash
+python scripts/ha-energy-history.py totals                    # kWh per dewarmte: series + metadata
+python scripts/ha-energy-history.py dst                       # stored hours on DST days: 23/25 (0 = no portal data)
+python scripts/ha-energy-history.py align 2026-10-31 [day…]   # imported hours vs the live energy sensor
+python scripts/ha-energy-history.py status                    # bell notification + options-screen status line
+```
+- `align` is the check for hour-shift bugs: matching hours differ by a few hundredths of a kWh, a shifted series by about the hour's whole consumption.
+- Delete and re-import are not scripted: drive them through Configure → Energy history import, as a user would.
+
 **5. Check what the official client expects**
 ```bash
 python scripts/extract-webapp-schema.py            # required/nullable per field + write bodies
