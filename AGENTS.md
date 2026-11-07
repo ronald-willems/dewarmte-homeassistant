@@ -213,7 +213,8 @@ The script refuses to run unless you are on `main`, the tree is clean, `main` is
 - **Don't bump the version in feature commits or on branches.** The release commit is the only place the version changes.
 - **Agents: draft the title and notes, then stop for review.** Base them on `git log <last tag>..HEAD` and the linked issues. Check `gh release list` so you don't repeat what an earlier release already shipped. Write the notes in the scratchpad (not the repo) and show them to the maintainer. Run the script only after they approve, passing `--yes`, since the prompt can't be answered from an agent shell.
 - **Style of previous releases:** a short title naming the main change (e.g. "Fixed Energy Sensors"), then a few bullets written for users: what changed for them, any requirement or caveat, and the issue reference (`#24`).
-- Use `--prerelease` when a change needs confirmation from a user with hardware we don't have. HACS only offers pre-releases to users who opt in.
+- Use `--prerelease` only for risky or bigger changes: anything that could break setup, existing entities or writes for users we cannot test, or a feature that touches several platforms at once. HACS only offers pre-releases to users who opt in, so a pre-release reaches fewer people and slows down confirmation.
+- A small, contained change that is merely unconfirmed on hardware we don't have (new entities gated to one pump type, a parser that tolerates the new fields) ships as a normal release. Say in the notes that it is unconfirmed and ask for a report on the issue. Its worst case is an error toast for the people who try it, and the next release fixes it.
 
 ## How to work effectively in this repo (agent guidance)
 
