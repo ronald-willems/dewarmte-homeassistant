@@ -51,7 +51,8 @@ class DeWarmteSensorEntityDescription(SensorEntityDescription):
     device_types: tuple[str, ...] = ("AO", "PT")  # Device types this sensor applies to
     suggested_display_precision: int | None = None
     # Where the value lives: "status" -> coordinator.data (polled status),
-    # "settings" -> coordinator._cached_settings (operation settings).
+    # "settings" -> coordinator._cached_settings (operation settings),
+    # "insights" -> coordinator._insights (year-to-date insights totals).
     source: str = "status"
     requires_cooling: bool = False  # Only create for cooling-capable devices
     # Attribute name on the source object; defaults to `key`. Set when the
@@ -157,6 +158,19 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
         device_types=("AO", "MP"),  # AO/MP only: the Pomp T status has no electric_backup_usage
     ),
+    # Year-to-date element energy from the insights endpoint (what the official
+    # app shows). On an MP the live `electric_backup_usage` above stays 0.0
+    # while the element runs; the insights do report it.
+    DeWarmteSensorEntityDescription(
+        key="electric_backup_usage_sum",
+        name="Electric Backup Energy",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=1,
+        device_types=("MP", "PT"),
+        source="insights",
+    ),
     # Operational status sensors
     DeWarmteSensorEntityDescription(
         key="fault_code",
@@ -164,7 +178,7 @@ SENSOR_DESCRIPTIONS: tuple[DeWarmteSensorEntityDescription, ...] = (
         device_class=None,
         state_class=None,
         native_unit_of_measurement=None,
-        device_types=("AO", "PT", "HC", "MP"),  # Common: fault codes for all devices
+        device_types=("AO", "HC", "MP"),  # PT status responses do not contain fault_code
     ),
     DeWarmteSensorEntityDescription(
         key="state",
@@ -257,6 +271,8 @@ class DeWarmteSensor(CoordinatorEntity[DeWarmteDataUpdateCoordinator], SensorEnt
         description = self.dewarmte_description
         if description.source == "settings":
             source_obj = getattr(self.coordinator, "_cached_settings", None)
+        elif description.source == "insights":
+            source_obj = getattr(self.coordinator, "_insights", None)
         else:
             source_obj = self.coordinator.data
         if not source_obj:

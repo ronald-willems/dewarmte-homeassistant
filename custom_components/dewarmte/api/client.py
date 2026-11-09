@@ -13,6 +13,7 @@ from .models.config import ConnectionSettings
 from .models.settings import DeviceOperationSettings, SettingsGroup, SETTING_GROUPS
 from .auth import DeWarmteAuth
 from .models.status_data import StatusData
+from .models.insights import InsightsSummary
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -274,6 +275,23 @@ class DeWarmteApiClient:
                 
         except Exception as err:
             _LOGGER.error("Error getting operation settings: %s", str(err))
+            return None
+
+    async def async_get_insights_summary(self, device: Device, year: int) -> InsightsSummary | None:
+        """Get the year-to-date insights totals for a specific device.
+
+        Same request the official app makes for Insights -> Year. Unlike the
+        energy history import, a failure here must not break the status poll,
+        so it is logged and reported as "no data".
+        """
+        try:
+            response = await self.async_get_insights(
+                device, timespan="monthly", start_date=f"{year}-01-01"
+            )
+            _LOGGER.debug("Insights data: %s", response)
+            return InsightsSummary.from_api_response(response)
+        except Exception as err:
+            _LOGGER.error("Error getting insights: %s", str(err))
             return None
 
     async def async_update_operation_settings(
