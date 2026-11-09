@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, List
 
 from homeassistant.config_entries import ConfigEntry
@@ -16,6 +16,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.util import dt as dt_util
 
 from .api.client import DeWarmteApiClient
 from .api.models.config import ConnectionSettings
@@ -25,6 +26,7 @@ from .api.models.api_sensor import ApiSensor
 from .const import CONF_IMPORT_ENERGY_HISTORY, CONF_UPDATE_INTERVAL, DOMAIN, DEFAULT_UPDATE_INTERVAL
 from .api.models.status_data import StatusData
 from .energy_history import EnergyHistoryImporter
+from .api.models.insights import InsightsSummary
 from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,6 +56,12 @@ def _warn_if_settings_restored(
             "the last change was not applied by the pump",
             device_id, current.version,
         )
+
+
+# Insights are only verified for these device types (an MP + PT account);
+# MPE products return HTTP 400 on this endpoint.
+INSIGHTS_DEVICE_TYPES = ("MP", "PT")
+INSIGHTS_INTERVAL = timedelta(minutes=15)
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -194,6 +202,8 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
         self._cached_settings: DeviceOperationSettings | None = None
         # Set only while the energy history import is switched on.
         self.energy_history: EnergyHistoryImporter | None = None
+        self._insights: InsightsSummary | None = None
+        self._insights_fetched_at: datetime | None = None
 
     @property
     def device(self) -> Optional[Device]:
@@ -223,11 +233,33 @@ class DeWarmteDataUpdateCoordinator(DataUpdateCoordinator[StatusData]):
             else:
                 self._cached_settings = None
 
+            await self._async_refresh_insights()
+
             return status_data
 
         except Exception as exception:
             _LOGGER.error("Error updating data: %s", str(exception))
             raise UpdateFailed() from exception
+
+    async def _async_refresh_insights(self) -> None:
+        """Fetch the year-to-date insights, at most once per INSIGHTS_INTERVAL.
+
+        Insights are hourly aggregates, so polling them at the status interval
+        would only add load. A failed fetch keeps the previous totals; it must
+        not fail the status update.
+        """
+        if self.device.device_type not in INSIGHTS_DEVICE_TYPES:
+            return
+        now = dt_util.now()
+        if (
+            self._insights_fetched_at is not None
+            and now - self._insights_fetched_at < INSIGHTS_INTERVAL
+        ):
+            return
+        self._insights_fetched_at = now
+        insights = await self.api.async_get_insights_summary(self.device, now.year)
+        if insights is not None:
+            self._insights = insights
 
     async def async_write_setting(self, key: str, value: Any) -> None:
         """Write one setting and publish the result to the entities.

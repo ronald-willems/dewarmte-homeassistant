@@ -55,11 +55,17 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[DeWarmteBinarySensorEntityDescription, ...] = 
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         device_types=("AO", "PT", "MP"),  # AO/PT/MP only: HC devices don't provide this field
     ),
+    # MP: tb-status is account-wide and reports is_element_on next to
+    # is_thermostat_on and is_gas_boiler_on: the space-heating backup. On an
+    # MP + PT account it followed the MP's element (matching the MP insights)
+    # and stayed off while the PT's own element was forced on.
+    # PT: the client maps the PT's own status.gas_boiler (its DHW electric
+    # heater) onto is_element_on, so each device reads its own element.
     DeWarmteBinarySensorEntityDescription(
         key="is_element_on",
         name="Electric Backup",
         device_class=BinarySensorDeviceClass.HEAT,
-        device_types=("PT",),  # PT-specific: DHW electric heater (API: status.gas_boiler)
+        device_types=("MP", "PT"),
     ),
     # Forced ("cool now") cooling state — read from operation settings, not status.
     DeWarmteBinarySensorEntityDescription(

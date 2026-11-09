@@ -28,7 +28,7 @@
 | Electricity Consumption | Electrical power consumption (kW) of the device. | AO, MP, PT, HC |
 | Heat Output | Heat output power (kW) delivered by the device. | AO, MP, PT, HC |
 | Electric Backup Usage | Backup electric heating power (kW) for space heating. | AO, MP |
-| Fault Code | Current fault or error code reported by the device. | AO, MP, PT, HC |
+| Fault Code | Current fault or error code reported by the device. | AO, MP, HC |
 | Operating State | What the device is doing right now: off, heating, cooling, defrosting, disinfecting, tap water heat assist, standby or unknown. | AO, MP, PT |
 | Settings State | Diagnostic sensor showing whether the latest settings change was sent, applied by the pump, or restored by DeWarmte, with the settings version as an attribute. | AO, MP, PT |
 | Forced Cooling Setpoint | Target temperature of the current forced-cooling run. | AO, MP (cooling) |
@@ -37,12 +37,13 @@
 | Electricity Consumption Energy | Energy (kWh) integrated from the Electricity Consumption power sensor since the integration was installed. | AO, MP, PT, HC |
 | Heat Output Energy | Energy (kWh) integrated from the Heat Output power sensor since the integration was installed. | AO, MP, PT, HC |
 | Electric Backup Usage Energy | Energy (kWh) integrated from the Electric Backup Usage power sensor since the integration was installed. | AO, MP |
+| Electric Backup Energy | Year-to-date energy (kWh) of the electric backup element, from the insights the official app shows. Polled every 15 minutes; resets on 1 January. | MP, PT |
 | CoP | Coefficient of performance: Heat Output Energy divided by Electricity Consumption Energy, so a running average since the integration was installed. | AO, MP, PT, HC |
 | Gas Boiler | Whether the gas boiler backup heating is active. | AO, MP |
 | Thermostat | Whether the space heating thermostat is calling for heat. | AO, MP |
 | Is On | Whether the device is currently running. | AO, MP, PT |
 | Is Connected | Whether the device is connected and reachable. | AO, MP, PT |
-| Electric Backup | Whether the electric heater of the hot water tank is on. | PT |
+| Electric Backup | Whether the electric backup element is on: the space-heating element on an MP (from tb-status), the hot water tank heater on a PT (from its status). | MP, PT |
 | Forced Cooling Active | Whether a forced-cooling run is in progress. | AO, MP (cooling) |
 
 ---
